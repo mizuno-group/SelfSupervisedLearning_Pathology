@@ -118,7 +118,6 @@ class BarlowTwinsLoss(torch.nn.Module):
         # normalize repr. along the batch dimension
         z_a_norm = (z_a - z_a.mean(0)) / z_a.std(0) # NxD
         z_b_norm = (z_b - z_b.mean(0)) / z_b.std(0) # NxD
-
         N = z_a.size(0)
         D = z_a.size(1)
 
