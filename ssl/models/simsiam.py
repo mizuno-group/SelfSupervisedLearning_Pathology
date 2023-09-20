@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+# SimSiam module
+
+reference:
+https://github.com/facebookresearch/simsiam
+
+@author: Katsuhisa
+"""
+
 import torch
 import torch.nn as nn
 from torch.nn.functional import cosine_similarity
@@ -6,8 +16,9 @@ class SimSiam(nn.Module):
     """
     SimSiam model.
     """
-    def __init__(self, base_encoder, dim=2048, pred_dim=512):
+    def __init__(self, base_encoder, head_size=512, dim=2048, pred_dim=512):
         """
+        head_size: last layer dimension
         dim: feature dimension (default: 2048)
         pred_dim: hidden dimension of the predictor (default: 512)
         """
@@ -17,16 +28,15 @@ class SimSiam(nn.Module):
         self.encoder = base_encoder
 
         # build a 3-layer projector
-        prev_dim = self.encoder.fc.weight.shape[1]
-        self.encoder.fc = nn.Sequential(nn.Linear(prev_dim, prev_dim, bias=False),
-                                        nn.BatchNorm1d(prev_dim),
-                                        nn.ReLU(inplace=True), # first layer
-                                        nn.Linear(prev_dim, prev_dim, bias=False),
-                                        nn.BatchNorm1d(prev_dim),
-                                        nn.ReLU(inplace=True), # second layer
-                                        nn.Linear(512 * self.encoder.expansion, dim), # changed from reference
-                                        nn.BatchNorm1d(dim, affine=False)) # output layer
-        self.encoder.fc[6].bias.requires_grad = False # hack: not use bias as it is followed by BN
+        self.fc = nn.Sequential(nn.Linear(head_size, head_size, bias=False),
+                                nn.BatchNorm1d(head_size),
+                                nn.ReLU(inplace=True), # first layer
+                                nn.Linear(head_size, head_size, bias=False),
+                                nn.BatchNorm1d(head_size),
+                                nn.ReLU(inplace=True), # second layer
+                                nn.Linear(head_size, dim),
+                                nn.BatchNorm1d(dim, affine=False)) # output layer
+        self.fc[6].bias.requires_grad = False # hack: not use bias as it is followed by BN
 
         # build a 2-layer predictor
         self.predictor = nn.Sequential(nn.Linear(dim, pred_dim, bias=False),
@@ -45,8 +55,8 @@ class SimSiam(nn.Module):
         """
 
         # compute features for one view
-        z1 = self.encoder(x1) # NxC
-        z2 = self.encoder(x2) # NxC
+        z1 = self.fc(self.encoder(x1)) # NxC
+        z2 = self.fc(self.encoder(x2)) # NxC
 
         p1 = self.predictor(z1) # NxC
         p2 = self.predictor(z2) # NxC

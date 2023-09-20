@@ -4,19 +4,22 @@ Created on Fri 29 15:46:32 2022
 
 prepare dataloader
 
-@author: tadahaya
+@author: Katsuhisa Morita, tadahaya
 """
+import gc
 import time
+from typing import Tuple
+
 from tqdm import tqdm
 import numpy as np
-from typing import Tuple
+import pandas as pd
 
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 from PIL import Image
 
-# frozen
+# dataset
 class MyDataset(torch.utils.data.Dataset):
     """ to create my dataset """
     def __init__(self, 
@@ -45,66 +48,74 @@ class MyDataset(torch.utils.data.Dataset):
             for t in self.transform:
                 out_data = t(out_data)
         return out_data,out_label
-            
-class MyTransforms:
-    def __init__(self) -> None:
-        pass
 
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        x = torch.from_numpy(x.astype(np.float32))  # example
-        return x
-
-class ColonDataset(torch.utils.data.Dataset):
-    """ to create my dataset """
-    def __init__(self, 
-                split:str='train',
-                root:str='path',
-                transform=None):
+class TGGATE_SSL_Dataset(torch.utils.data.Dataset):
+    """ load for each version """
+    def __init__(self,
+                info_df=pd.DataFrame(),
+                dir_col_name:str="DIR",
+                fold_col_name:str="FOLD",
+                fold_lst:list=[0,],
+                sample_col_name:str="SAMPLE",
+                transform=None,
+                ):
+        # set transform
         if type(transform)!=list:
-            self.transform = [transform]
+            self._transform = [transform]
         else:
-            self.transform = transform
+            self._transform = transform
+        # extracted target fold
+        self._info_df=[]
+        for fold in fold_lst:
+            self._info_df.append(info_df[info_df[fold_col_name]==fold])
+        self._info_df=pd.concat(self._info_df, axis=0)
+        # list of file dir
+        dir_lst = self._info_df[dir_col_name].tolist()
+        sample_lst_lst = self._info_df[sample_col_name].tolist()
+        self.dir_lst = [[f"{dir_name}.npy", sample] for dir_name, sample_lst in zip(dir_lst, sample_lst_lst) for sample in sample_lst]
+        self.datanum = len(self.dir_lst)
 
-        # load from project folder
-        DATA = np.load(f'{root}/data/colon224.npz')
-        self.data = DATA[f'{split}_images']
-        self.label = DATA[f'{split}_labels']
+    def __len__(self):
+        return self.datanum
+
+    def __getitem__(self,idx):
+        out_data = np.load(self.dir_lst[idx][0])[self.dir_lst[idx][1]]
+        out_data = Image.fromarray(out_data).convert("RGB")
+        if self._transform:
+            for t in self._transform:
+                out_data = t(out_data)
+        return out_data
+
+class TGGATE_SSL_Dataset_Batch(torch.utils.data.Dataset):
+    """ load for each version """
+    def __init__(self,
+                batch_number:int=None,
+                transform=None,
+                ):
+        # set transform
+        if type(transform)!=list:
+            self._transform = [transform]
+        else:
+            self._transform = transform
+        # load data
+        with open(f"/work/ga97/share/tggates/batch/batch_{batch_number}.npy", 'rb') as f:
+            self.data = np.load(f)
         self.datanum = len(self.data)
+        gc.collect()
 
     def __len__(self):
         return self.datanum
 
     def __getitem__(self,idx):
         out_data = self.data[idx]
-        out_label = self.label[idx].astype(np.uint8)
         out_data = Image.fromarray(out_data).convert("RGB")
-        if self.transform:
-            for t in self.transform:
+        if self._transform:
+            for t in self._transform:
                 out_data = t(out_data)
-        return out_data,out_label
-
-def prep_dataset(data, label=None, transform=None) -> torch.utils.data.Dataset:
-    """
-    prepare dataset from row data
-    
-    Parameters
-    ----------
-    data: array
-        input data such as np.array
-
-    label: array
-        input labels such as np.array
-        would be None with unsupervised learning
-
-    transform: a list of transform functions
-        each function should return torch.tensor by __call__ method
-    
-    """
-    return MyDataset(data, label, transform)
-
+        return out_data
 
 def prep_dataloader(
-    dataset, batch_size, shuffle=None, num_workers=2, pin_memory=True, drop_last=True
+    dataset, batch_size:int, shuffle:bool=True, num_workers:int=4, pin_memory:bool=True, drop_last:bool=True
     ) -> torch.utils.data.DataLoader:
     """
     prepare train and test loader
@@ -137,14 +148,12 @@ def prep_dataloader(
         pin_memory=pin_memory,
         worker_init_fn=_worker_init_fn,
         drop_last=drop_last
-        )    
+        )
     return loader
-
 
 def _worker_init_fn(worker_id):
     """ fix the seed for each worker """
     np.random.seed(np.random.get_state()[1][0] + worker_id)
-
 
 def prep_data(
     train_x, train_y, test_x, test_y, batch_size,
@@ -189,9 +198,14 @@ def prep_data(
         )
     return train_loader, test_loader
 
+def resize_dataset_dir(dataset, size:int=256):
+    """ data resize for small scaling """
+    dataset.dir_lst = dataset.dir_lst[:size]
+    dataset.datanum = size
+    return dataset
+
 def resize_dataset(dataset, size:int=256):
     """ data resize for small scaling """
     dataset.data = dataset.data[:size]
-    dataset.label= dataset.label[:size]
-    dataset.datanum=len(dataset.data)
+    dataset.datanum = size
     return dataset

@@ -10,20 +10,22 @@ import os
 import datetime
 import random
 import logging
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Sequence
 
 import numpy as np
 import pandas as pd
 import torch
+from torch import Tensor
 
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from PIL import ImageOps, Image
 import torchvision.transforms as transforms
-from torchinfo import summary
+
+from src.ssl.utils_lightly import RandomRotate, RandomSolarization
 
 # assist model building
-def fix_seed(seed:int=None,fix_gpu:bool=False):
+def fix_seed(seed:int=None,fix_gpu:bool=True):
     """ fix seed """
     random.seed(seed)
     torch.manual_seed(seed)
@@ -32,13 +34,13 @@ def fix_seed(seed:int=None,fix_gpu:bool=False):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-def fix_params(model, all=False):
+def fix_params(model, forall=False):
     """ freeze model parameters """
     # freeze layers
     for param in model.parameters():
         param.requires_grad = False
     # except last layer
-    if all:
+    if forall:
         pass
     else:
         last_layer = list(model.children())[-1]
@@ -53,41 +55,6 @@ def unfix_params(model):
         param.requires_grad = True
     return model
 
-class RandomRotate(object):
-    """Implementation of random rotation.
-    Randomly rotates an input image by a fixed angle. By default, we rotate
-    the image by 90 degrees with a probability of 50%.
-    This augmentation can be very useful for rotation invariant images such as
-    in medical imaging or satellite imaginary.
-    Attributes:
-        prob:
-            Probability with which image is rotated.
-        angle:
-            Angle by which the image is rotated. We recommend multiples of 90
-            to prevent rasterization artifacts. If you pick numbers like
-            90, 180, 270 the tensor will be rotated without introducing 
-            any artifacts.
-    
-    """
-
-    def __init__(self, prob: float = 0.5, angle: int = 90):
-        self.prob = prob
-        self.angle = angle
-
-    def __call__(self, sample):
-        """Rotates the images with a given probability.
-        Args:
-            sample:
-                PIL image which will be rotated.
-        
-        Returns:
-            Rotated image or original image.
-        """
-        prob = np.random.random_sample()
-        if prob < self.prob:
-            sample =  transforms.functional.rotate(sample, self.angle)
-        return sample
-
 def random_rotation_transform(
     rr_prob: float = 0.5,
     rr_degrees: Union[None, float, Tuple[float, float]] = 90,
@@ -99,58 +66,48 @@ def random_rotation_transform(
         # Random rotation with random angle defined by rr_degrees.
         return transforms.RandomApply([transforms.RandomRotation(degrees=rr_degrees)], p=rr_prob)
 
-def myrotation(split=False, multi=False):
+def ssl_transform(
+    split=False, multi=False,
+    size=(224,224),
+    color_plob=0.8,
+    blur_plob=0.2,
+    solar_plob=0,
+    ):
     # normalization
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
-    # augmentation for ssl (consistent to ref)
+    # augmentation
     augmentation = transforms.Compose([
         transforms.RandomHorizontalFlip(p=0.5),
         random_rotation_transform(rr_prob=1., rr_degrees=[0,180]),
         transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=0.8
+            transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=color_plob
             ),
         transforms.RandomGrayscale(p=0.2),
         transforms.RandomApply([
-            transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=0.2
+            transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=blur_plob
             ),
-        transforms.RandomResizedCrop((224, 224)),
+        RandomSolarization(prob=solar_plob),
+        transforms.RandomResizedCrop(size),
         transforms.ToTensor(),
         normalize
     ])
+
+    # set
     if split:
         if multi:
-            train_data_ssl_transform = MultiCropsTransform(augmentation)
+            return MultiCropsTransform(augmentation)
         else:
-            train_data_ssl_transform = TwoCropsTransform(augmentation)
+            return TwoCropsTransform(augmentation)
     else:
-        train_data_ssl_transform = augmentation
+        return augmentation
 
-    # transformations
-    train_data_transform = augmentation #230104~ changed
-    other_data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize
-    ])
-    return train_data_ssl_transform, train_data_transform, other_data_transform
-
-def myrotationDINO():
+def my_transform():
     # normalization
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
-    # augmentation for ssl (consistent to ref)
+    # augmentation
     augmentation = transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),
-        random_rotation_transform(rr_prob=1., rr_degrees=[0,180]),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=0.8
-            ),
-        transforms.RandomGrayscale(p=0.2),
-    ])
-    train_data_ssl_transform = DINOCropsTransform(augmentation)
-
-    # transformations
-    train_data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(p=0.5),
         random_rotation_transform(rr_prob=1., rr_degrees=[0,180]),
         transforms.RandomApply([
@@ -163,12 +120,15 @@ def myrotationDINO():
         transforms.RandomResizedCrop((224, 224)),
         transforms.ToTensor(),
         normalize
-    ]) #230104~ changed
+    ])
+    # set
+    train_data_transform = augmentation
     other_data_transform = transforms.Compose([
+        transforms.CenterCrop((224,224)), #230724 fixed
         transforms.ToTensor(),
         normalize
     ])
-    return train_data_ssl_transform, train_data_transform, other_data_transform
+    return train_data_transform, other_data_transform
 
 class TwoCropsTransform:
     """Take two random crops of one image as the query and key."""
@@ -196,7 +156,7 @@ class MultiCropsTransform:
         self.crop_transforms = []
         for i in range(len(crop_sizes)):
             random_resized_crop = transforms.RandomResizedCrop(
-                crop_sizes[i]
+                (crop_sizes[i], crop_sizes[i])
             )
             self.crop_transforms.extend([
                 transforms.Compose([
@@ -209,57 +169,79 @@ class MultiCropsTransform:
         views = [crop_transform(x) for crop_transform in self.crop_transforms]
         return views
 
-class DINOCropsTransform:
-    """ return high and low resolution different crops from one image """
-    def __init__(
-        self, base_transform, 
-        crop_counts=6, 
-        crop_sizes=[224,96]
-        ):
-        self.base_transform = base_transform
-        self.crop_counts=crop_counts
-        self.crop_sizes=crop_sizes
-        
-        # list of transforms for crop images
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-        self.crop_transforms = []
-        global_transform1 = transforms.Compose([
-            transforms.RandomResizedCrop(crop_sizes[0], scale=(0.4, 1), interpolation=transforms.InterpolationMode.BICUBIC),
-            base_transform,
-            transforms.RandomApply([
-                transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=1
-                ),
-            transforms.ToTensor(),
-            normalize                
-        ])  
-        global_transform2 = transforms.Compose([
-            transforms.RandomResizedCrop(crop_sizes[0], scale=(0.4, 1), interpolation=transforms.InterpolationMode.BICUBIC),
-            base_transform,
-            transforms.RandomApply([
-                transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=0.1
-                ),
-            transforms.RandomSolarize(threshold=128, p=0.2),                
-            transforms.ToTensor(),
-            normalize                
-        ])    
-        local_transform = transforms.Compose([
-            transforms.RandomResizedCrop(crop_sizes[1], scale=(0.05, 0.4), interpolation=transforms.InterpolationMode.BICUBIC),
-            base_transform,
-            transforms.RandomApply([
-                transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=0.5
-                ),
-            transforms.ToTensor(),
-            normalize
-        ])
-        self.crop_transforms=[global_transform1, global_transform2]
-        self.crop_transforms.extend([local_transform] * crop_counts)
-
-    def __call__(self, x):
-        views = [crop_transform(x) for crop_transform in self.crop_transforms]
-        return views    
-
 # logger
+class logger_save():
+    def __init__(self):
+        self.tag=None
+        self.level_dic = {
+        'critical':logging.CRITICAL,
+        'error':logging.ERROR,
+        'warning':logging.WARNING,
+        'info':logging.INFO,
+        'debug':logging.DEBUG,
+        'notset':logging.NOTSET
+        }
+        self.logger=None
+        self.init_info=None
+        self.level_console=None
+        self.module_name=None
+
+    def init_logger(self, module_name:str, outdir:str='', tag:str='',
+                    level_console:str='warning', level_file:str='info'):
+        #setting
+        if len(tag)==0:
+            tag = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        self.init_info={
+            'level':self.level_dic[level_file],
+            'filename':f'{outdir}/log_{tag}.txt',
+            'format':'[%(asctime)s] [%(levelname)s] %(message)s',
+            'datefmt':'%Y%m%d-%H%M%S'
+            }
+        self.level_console=level_console
+        self.module_name=module_name
+        #init
+        logging.basicConfig(**self.init_info)
+        logger = logging.getLogger(self.module_name)
+        sh = logging.StreamHandler()
+        sh.setLevel(self.level_dic[self.level_console])
+        fmt = logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] %(message)s",
+            "%Y%m%d-%H%M%S"
+            )
+        sh.setFormatter(fmt)
+        logger.addHandler(sh)
+        self.logger=logger
+
+    def load_logger(self, filein:str=''):
+        # load
+        self.__dict__.update(pd.read_pickle(filein))
+        #init
+        logging.basicConfig(**self.init_info)
+        logger = logging.getLogger(self.module_name)
+        sh = logging.StreamHandler()
+        sh.setLevel(self.level_dic[self.level_console])
+        fmt = logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] %(message)s",
+            "%Y%m%d-%H%M%S"
+            )
+        sh.setFormatter(fmt)
+        logger.addHandler(sh)
+        self.logger=logger
+
+    def save_logger(self, fileout:str=''):
+        pd.to_pickle(self.__dict__, fileout)
+
+    def to_logger(self, name:str='', obj=None, skip_keys:set=set(), skip_hidden:bool=True):
+        """ add instance information to logging """
+        self.logger.info(name)
+        for k,v in vars(obj).items():
+            if k not in skip_keys:
+                if skip_hidden:
+                    if not k.startswith('_'):
+                        self.logger.info('  {0}: {1}'.format(k,v))
+                else:
+                    self.logger.info('  {0}: {1}'.format(k,v))
+
 def init_logger(
     module_name:str, outdir:str='', tag:str='',
     level_console:str='warning', level_file:str='info'
@@ -294,7 +276,6 @@ def init_logger(
     sh.setFormatter(fmt)
     logger.addHandler(sh)
     return logger
-
 
 def to_logger(
     logger, name:str='', obj=None, skip_keys:set=set(), skip_hidden:bool=True
@@ -353,6 +334,23 @@ class EarlyStopping:
     def delete_checkpoint(self):
         os.remove(self.path)
 
+def set_criterion(criterion_name="BCE"):
+    if criterion_name == "BCE":
+        criterion = nn.BCEWithLogitsLoss()
+        preprocess = lambda x: x.sigmoid()
+    elif criterion_name == "WeightedBCE":
+        positive_weight = train_info[ft_list].mean().values.astype(np.float32)
+        positive_weight = torch.tensor((1 - positive_weight)/(positive_weight + 1e-5))
+        criterion = WeightedBCELossWithLogits(positive_weight=positive_weight, negative_weight=torch.tensor(1), device=device)
+        preprocess = lambda x: x.sigmoid()
+    elif criterion_name == "FocalBCE":
+        criterion = FocalBCELossWithLogits(gamma=1)
+        preprocess = lambda x: x.sigmoid()
+    elif criterion_name == "MSE":
+        criterion = nn.MSELoss()
+        preprocess = lambda x: x
+    return criterion, preproceess
+
 # save & export
 def summarize_model(model, summary, outdir, lst_name=['summary.txt', 'model.pt']):
     """
@@ -378,50 +376,3 @@ def summarize_model(model, summary, outdir, lst_name=['summary.txt', 'model.pt']
     torch.save(model.state_dict(), f'{outdir}/{lst_name[1]}')
 
 
-# plot
-def plot_progress(train_loss, test_loss, outdir):
-    """ plot learning progress """
-    fig, ax = plt.subplots()
-    plt.rcParams['font.size'] = 18
-    ax.plot(list(range(1, len(train_loss) + 1, 1)), train_loss, c='purple', label='train loss')
-    ax.plot(list(range(1, len(test_loss) + 1, 1)), test_loss, c='orange', label='test loss')
-    ax.set_xlabel('epoch')
-    ax.set_ylabel('loss')
-    ax.grid()
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(outdir + '/progress.tif', dpi=100, bbox_inches='tight')
-
-def plot_progress_train(train_loss, outdir):
-    """ plot learning progress """
-    fig, ax = plt.subplots()
-    plt.rcParams['font.size'] = 18
-    ax.plot(list(range(1, len(train_loss) + 1, 1)), train_loss, c='purple', label='train loss')
-    ax.set_xlabel('epoch')
-    ax.set_ylabel('loss')
-    ax.grid()
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(outdir + '/progress_train.tif', dpi=100, bbox_inches='tight')
-
-def plot_accuracy(scores, labels, outdir):
-    """ plot learning progress """
-    fpr, tpr, _ = metrics.roc_curve(labels, scores)
-    auroc = metrics.auc(fpr, tpr)
-    precision, _, _ = metrics.precision_recall_curve(labels, scores)
-    aupr = metrics.auc(tpr, precision)
-    fig, axes = plt.subplots(1, 2, tight_layout=True)
-    plt.rcParams['font.size'] = 18
-    axes[0, 1].plot(fpr, tpr, c='purple')
-    axes[0, 1].set_title(f'ROC curve (area: {auroc:.3})')
-    axes[0, 1].set_xlabel('FPR')
-    axes[0, 1].set_ylabel('TPR')
-    axes[0, 2].plot(tpr, precision, c='orange')
-    axes[0, 2].set_title(f'PR curve (area: {aupr:.3})')
-    axes[0, 2].set_xlabel('Recall')
-    axes[0, 2].set_ylabel('Precision')
-    plt.grid()
-    plt.savefig(outdir + '/accuracy.tif', dpi=100, bbox_inches='tight')
-    df = pd.DataFrame({'labels':labels, 'predicts':scores})
-    df.to_csv(outdir + '/predicted.txt', sep='\t')
-    return auroc, aupr
