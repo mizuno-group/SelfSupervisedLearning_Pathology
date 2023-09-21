@@ -22,7 +22,7 @@ from sklearn import metrics
 from PIL import ImageOps, Image
 import torchvision.transforms as transforms
 
-from src.ssl.utils_lightly import RandomRotate, RandomSolarization
+from ssl.utils_lightly import RandomRotate, RandomSolarization
 
 # assist model building
 def fix_seed(seed:int=None,fix_gpu:bool=True):

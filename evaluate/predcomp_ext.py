@@ -15,7 +15,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import sklearn.metrics as metrics
 
-from src.evaluate import utils
+from evaluate import utils
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14

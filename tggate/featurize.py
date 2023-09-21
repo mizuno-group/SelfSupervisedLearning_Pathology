@@ -16,8 +16,8 @@ import torchvision
 import torchvision.transforms as transforms
 from PIL import ImageOps, Image
 
-from src import ssl
-import src.tggate.sslutils as sslutils
+import ssl
+import tggate.sslutils as sslutils
 
 # DataLoader
 class Dataset_Batch(torch.utils.data.Dataset):

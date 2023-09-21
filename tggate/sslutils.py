@@ -9,8 +9,8 @@ import numpy as np
 import torch
 import torchvision
 
-from src import ssl
-from src.ssl.models import barlowtwins, simsiam, byol, swav
+import ssl
+from ssl.models import barlowtwins, simsiam, byol, swav
 
 class BarlowTwins:
     def __init__(self, DEVICE="cpu"):

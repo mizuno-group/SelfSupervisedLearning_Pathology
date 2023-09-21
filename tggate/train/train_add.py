@@ -33,10 +33,10 @@ from torch.utils.data import Dataset
 from timm.scheduler import CosineLRScheduler
 
 # original packages in src
-sys.path.append(PROJECT_PATH)
-from src import ssl
-from src.ssl import data_handler as dh
-import src.tggate.sslutils as sslutils
+sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
+import ssl
+from ssl import data_handler as dh
+import tggate.sslutils as sslutils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')

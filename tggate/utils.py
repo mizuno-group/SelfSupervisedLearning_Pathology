@@ -51,15 +51,3 @@ def sampling_patch_from_wsi(patch_number:int=200, all_number:int=2000, len_df:in
         random.seed(seed)
     random_lst = list(range(all_number))
     return [random.sample(random_lst, patch_number) for i in range(len_df)]
-
-def set_dir(time_lst, name_lst):
-    """HIEGM7 DIR structure"""
-    dir_lst = []
-    ap=dir_lst.append
-    for time, name in zip(time_lst, name_lst):
-        if "day" in time:
-            folder = f"/workspace/HDD1/TGGATE"
-        else:  
-            folder = f"/workspace/HDD2/TGGATE"
-        ap(f"{folder}/patch/{time}/{name}")
-    return dir_lst
