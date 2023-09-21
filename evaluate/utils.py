@@ -15,8 +15,6 @@ from sklearn.metrics import pairwise_distances
 
 from inmoose.pycombat import pycombat_norm
 
-root = "/workspace/230727_pharm"
-
 def standardize(x_train, x_test=None, train_only=False):
     """ standardize / fillna with 0 """
     ss = StandardScaler()
@@ -170,14 +168,14 @@ def multi_dataframe(df, coef:int=10):
     else:
         return df
 
-def load_tggate(coef:int=1, ):
+def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggate_info.csv"):
     lst_compounds = [
         "acetaminophen",
         "bromobenzene",
         "naphthyl isothiocyanate",
         "carbon tetrachloride",
     ]
-    df_info =pd.read_csv(f"{root}/data/processed/tggate_info.csv")
+    df_info =pd.read_csv(filein)
     df_info["INDEX"]=list(range(df_info.shape[0]))
     df_info = df_info[
         (df_info["COMPOUND_NAME"].isin(lst_compounds))
@@ -189,7 +187,7 @@ def load_tggate(coef:int=1, ):
     df_info=multi_dataframe(df_info, coef=coef)
     return df_info
 
-def load_eisai(coef:int=1, conv_name=True):
+def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/processed/eisai_info.csv"):
     dict_name={
         "Corn Oil":"vehicle",
         "Bromobenzene":"bromobenzene",
@@ -198,7 +196,7 @@ def load_eisai(coef:int=1, conv_name=True):
         "Methylcellulose":"vehicle",
         "Acetaminophen":"acetaminophen",
     } # Eisai datasetname → TG-GATE name * vehicle
-    df_info_eisai = pd.read_csv(f'{root}/data/processed/eisai_info.csv')
+    df_info_eisai = pd.read_csv(filein)
     if conv_name:
         df_info_eisai["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info_eisai["COMPOUND_NAME"]]
     df_info_eisai=multi_dataframe(df_info_eisai, coef=coef)

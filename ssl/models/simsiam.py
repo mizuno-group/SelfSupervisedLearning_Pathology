@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-# SimSiam module
+# byol module
 
-reference:
-https://github.com/facebookresearch/simsiam
+reference: https://github.com/facebookresearch/simsiam
 
-@author: Katsuhisa
+@author: Katsuhisa MORITA
 """
-
 import torch
 import torch.nn as nn
 from torch.nn.functional import cosine_similarity

@@ -16,7 +16,7 @@ from sklearn.metrics import pairwise_distances
 from sklearn.manifold import TSNE, MDS
 from sklearn.linear_model import LogisticRegression
 
-from src.evaluate import utils
+from evaluate import utils
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
