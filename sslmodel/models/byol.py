@@ -98,7 +98,7 @@ class NetWrapper(nn.Module):
 
     @singleton('projector')
     def _get_projector(self, hidden):
-        _, dim = hidden.shape
+        dim = hidden.shape # changed from _, dim
         create_mlp_fn = SimSiamMLP if self.use_simsiam_mlp else MLP
         projector = create_mlp_fn(dim, self.projection_size, self.projection_hidden_size)
         return projector.to(hidden)
@@ -136,7 +136,6 @@ class BYOL(nn.Module):
     ):
         super().__init__()
         self.net = net
-
         self.online_encoder = NetWrapper(net, projection_size, projection_hidden_size, layer=hidden_layer, use_simsiam_mlp=False)
         self.target_encoder = None
         self.target_ema_updater = EMA(moving_average_decay)
