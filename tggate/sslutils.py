@@ -9,8 +9,8 @@ import numpy as np
 import torch
 import torchvision
 
-import ssl
-from ssl.models import barlowtwins, simsiam, byol, swav
+import sslmodel
+from sslmodel.models import barlowtwins, simsiam, byol, swav
 
 class BarlowTwins:
     def __init__(self, DEVICE="cpu"):
@@ -24,7 +24,7 @@ class BarlowTwins:
 
     def prepare_transform(
         self,
-        color_plob=0.6,
+        color_plob=0.8,
         blur_plob=0.2,
         solar_plob=0.
         ):
@@ -38,7 +38,7 @@ class BarlowTwins:
         return train_transform
 
     def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
-        model = ssl.models.barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
+        model = sslmodel.models.barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
         model.load_state_dict(torch.load(model_path))
         model = model.backbone
         model.to(self.DEVICE)
@@ -57,8 +57,8 @@ class Byol:
     def prepare_model(self, backbone, head_size:int=512):
         """return ssl model"""
         model = byol.BYOL(
-            encoder, image_size=224, 
-            hidden_layer='avgpool', 
+            backbone, image_size=224, 
+            hidden_layer=-1, 
             projection_size = 256, projection_hidden_size = 512, 
             moving_average_decay = 0.99,
             DEVICE=self.DEVICE,
@@ -69,12 +69,12 @@ class Byol:
 
     def prepare_transform(
         self,
-        color_plob=0.6,
+        color_plob=0.8,
         blur_plob=0.2,
         solar_plob=0.
         ):
         """return transforms for ssl"""
-        train_transform = ssl.utils.ssl_transform(
+        train_transform = sslmodel.utils.ssl_transform(
             color_plob=color_plob,
             blur_plob=blur_plob, 
             solar_plob=solar_plob,
@@ -118,12 +118,12 @@ class SwaV:
 
     def prepare_transform(
         self,
-        color_plob=0.6,
+        color_plob=0.8,
         blur_plob=0.2,
         solar_plob=0.
         ):
         """return transforms for ssl"""
-        train_transform = ssl.utils.ssl_transform(
+        train_transform = sslmodel.utils.ssl_transform(
             color_plob=color_plob,
             blur_plob=blur_plob, 
             solar_plob=solar_plob,
@@ -161,17 +161,18 @@ class SimSiam:
             head_size=head_size,
             dim=1024,
             pred_dim=512,)
+        criterion = simsiam.NegativeCosineSimilarity()
         model.to(DEVICE)
         return model, criterion
 
     def prepare_transform(
         self,
-        color_plob=0.6,
+        color_plob=0.8,
         blur_plob=0.2,
         solar_plob=0.
         ):
         """return transforms for ssl"""
-        train_transform = ssl.utils.ssl_transform(
+        train_transform = sslmodel.utils.ssl_transform(
             color_plob=color_plob,
             blur_plob=blur_plob, 
             solar_plob=solar_plob,

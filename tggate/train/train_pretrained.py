@@ -34,8 +34,8 @@ from timm.scheduler import CosineLRScheduler
 
 # original packages in src
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
-import ssl
-from ssl import data_handler as dh
+import sslmodel
+from sslmodel import data_handler as dh
 import tggate.sslutils as sslutils
 
 # argument
@@ -66,7 +66,7 @@ parser.add_argument('--warmup_t', type=int, default=5)
 parser.add_argument('--warmup_lr_init', type=float, default=1e-5)
 
 args = parser.parse_args()
-ssl.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
+sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 DICT_MODEL={
     "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
@@ -165,7 +165,7 @@ def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:f
     scheduler = CosineLRScheduler(
         optimizer, t_initial=num_epoch, lr_min=args.lr_min,
         warmup_t=args.warmup_t, warmup_lr_init=args.warmup_lr_init, warmup_prefix=True)
-    early_stopping = ssl.utils.EarlyStopping(patience=patience, delta=delta, path=f'{DIR_NAME}/checkpoint.pt')
+    early_stopping = sslmodel.utils.EarlyStopping(patience=patience, delta=delta, path=f'{DIR_NAME}/checkpoint.pt')
     return model, criterion, optimizer, scheduler, early_stopping
 
 def load_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150):
@@ -296,8 +296,8 @@ def main(resume=False):
         model, criterion, optimizer, scheduler, early_stopping, num_epoch=args.num_epoch, epoch_start=epoch_start, train_loss=train_loss,
     )        
     if flag_finish:
-        ssl.plot.plot_progress_train(train_loss, DIR_NAME)
-        ssl.utils.summarize_model(
+        sslmodel.plot.plot_progress_train(train_loss, DIR_NAME)
+        sslmodel.utils.summarize_model(
             model,
             None,
             DIR_NAME, lst_name=['summary_ssl.txt', 'model_ssl.pt']
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     if args.resume:
         if not os.path.exists(file_log):
             print("log file doesnt exist")
-        LOGGER = ssl.utils.logger_save()
+        LOGGER = sslmodel.utils.logger_save()
         LOGGER.load_logger(filein=file_log)
         LOGGER.logger.info(f"resume: {datetime.datetime.now().strftime('%Y%m%d%H%M%S')}")
         main(resume=True)
@@ -331,7 +331,7 @@ if __name__ == '__main__':
         if not os.path.exists(DIR_NAME):
             os.makedirs(DIR_NAME)
         now = datetime.datetime.now().strftime('%H%M%S')
-        LOGGER = ssl.utils.logger_save()
+        LOGGER = sslmodel.utils.logger_save()
         LOGGER.init_logger(filename, DIR_NAME, now, level_console='debug') 
         DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
         main(resume=False)

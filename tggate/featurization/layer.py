@@ -29,7 +29,6 @@ from PIL import Image
 
 # original packages in src
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
-import ssl
 import featurize
 
 # argument

@@ -22,7 +22,7 @@ class SimSiam(nn.Module):
         """
         super(SimSiam, self).__init__()
 
-        # set the encoder
+        # set the backbone encoder
         self.encoder = base_encoder
 
         # build a 3-layer projector
@@ -53,8 +53,12 @@ class SimSiam(nn.Module):
         """
 
         # compute features for one view
-        z1 = self.fc(self.encoder(x1)) # NxC
-        z2 = self.fc(self.encoder(x2)) # NxC
+        z1 = self.encoder(x1)
+        z2 = self.encoder(x2)
+        z1 = nn.Flatten(z1) #flatten
+        z2 = nn.Flatten(z2) #flatten
+        z1 = self.fc(z1) # NxC
+        z2 = self.fc(z2) # NxC
 
         p1 = self.predictor(z1) # NxC
         p2 = self.predictor(z2) # NxC

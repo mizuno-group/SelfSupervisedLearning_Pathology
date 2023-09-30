@@ -16,7 +16,7 @@ import torchvision
 import torchvision.transforms as transforms
 from PIL import ImageOps, Image
 
-import ssl
+import sslmodel
 import tggate.sslutils as sslutils
 
 # DataLoader
@@ -66,7 +66,7 @@ def prepare_dataset_batch(filein:str="", batch_size:int=32):
         transform=data_transform,
         )
     # to loader
-    data_loader = ssl.data_handler.prep_dataloader(
+    data_loader = sslmodel.data_handler.prep_dataloader(
         dataset, batch_size, 
         shuffle=False,
         drop_last=False)
