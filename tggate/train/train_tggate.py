@@ -68,9 +68,9 @@ DICT_MODEL={
     "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
     "ConvNextTiny": [torchvision.models.convnext_tiny, 768],
     "ResNet18": [torchvision.models.resnet18, 512],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888]
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888],
+    "DenseNet121": [torchvision.models.densenet121, 1024],
 }
-
 DICT_SSL={
     "barlowtwins":sslutils.BarlowTwins,
     "swav":sslutils.SwaV,
@@ -152,9 +152,16 @@ def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:f
     except:
         print("indicated model name is not implemented")
         ValueError
-    backbone = nn.Sequential(
-        *list(encoder.children())[:-1],
-        )
+    if model_name=="DenseNet121":
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+            )
+    else:
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            )
     model, criterion = ssl_class.prepare_model(backbone, head_size=size)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
@@ -188,9 +195,16 @@ def load_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:floa
     except:
         print("indicated model name is not implemented")
         ValueError
-    backbone = nn.Sequential(
-        *list(encoder.children())[:-1],
-        )
+    if model_name=="DenseNet121":
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+            )
+    else:
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            )
     model, criterion = ssl_class.prepare_model(backbone, head_size=size)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(

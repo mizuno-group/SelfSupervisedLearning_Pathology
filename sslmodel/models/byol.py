@@ -98,9 +98,13 @@ class NetWrapper(nn.Module):
 
     @singleton('projector')
     def _get_projector(self, hidden):
-        dim = hidden.shape # changed from _, dim
+        dim = hidden.shape[1] # changed from _, dim
         create_mlp_fn = SimSiamMLP if self.use_simsiam_mlp else MLP
-        projector = create_mlp_fn(dim, self.projection_size, self.projection_hidden_size)
+        projector = create_mlp_fn(
+            dim, 
+            self.projection_size, 
+            self.projection_hidden_size
+            )
         return projector.to(hidden)
 
     def get_representation(self, x):
@@ -118,6 +122,7 @@ class NetWrapper(nn.Module):
 
     def forward(self, x):
         representation = self.get_representation(x)
+        representation = torch.flatten(representation, start_dim=1)
         projector = self._get_projector(representation)
         projection = projector(representation)
         return projection, representation
@@ -139,7 +144,10 @@ class BYOL(nn.Module):
         self.online_encoder = NetWrapper(net, projection_size, projection_hidden_size, layer=hidden_layer, use_simsiam_mlp=False)
         self.target_encoder = None
         self.target_ema_updater = EMA(moving_average_decay)
-        self.online_predictor = MLP(projection_size, projection_size, projection_hidden_size)
+        self.online_predictor = MLP(
+            projection_size, 
+            projection_size, 
+            projection_hidden_size)
 
         self.to(DEVICE)
         # send a mock image tensor to instantiate singleton parameters

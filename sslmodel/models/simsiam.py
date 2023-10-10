@@ -55,8 +55,8 @@ class SimSiam(nn.Module):
         # compute features for one view
         z1 = self.encoder(x1)
         z2 = self.encoder(x2)
-        z1 = nn.Flatten(z1) #flatten
-        z2 = nn.Flatten(z2) #flatten
+        z1 = torch.flatten(z1, start_dim=1) #flatten
+        z2 = torch.flatten(z2, start_dim=1) #flatten
         z1 = self.fc(z1) # NxC
         z2 = self.fc(z2) # NxC
 
