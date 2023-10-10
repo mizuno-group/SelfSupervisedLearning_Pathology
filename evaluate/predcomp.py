@@ -24,12 +24,6 @@ plt.rcParams["font.size"] = 14
 # Settings
 root = "/workspace/230727_pharm"
 random_state=24771
-lst_compounds = [
-    "acetaminophen",
-    "bromobenzene",
-    "naphthyl isothiocyanate",
-    "carbon tetrachloride",
-]
 lst_compounds_eisai=[
     "Corn Oil",
     "Bromobenzene",
@@ -38,9 +32,17 @@ lst_compounds_eisai=[
     "Methylcellulose",
     "Acetaminophen"
 ]
+lst_compounds_our=[
+    "vehicle",
+    "thioacetamide",
+    "carbon tetrachloride",
+    "naphthyl isothiocyanate",
+    "acetaminophen",
+]
 lst_compounds_target=[
     "vehicle",
     "bromobenzene",
+    "thioacetamide",
     "carbon tetrachloride",
     "naphthyl isothiocyanate",
     "acetaminophen",
@@ -65,7 +67,8 @@ class LOWCV:
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
-        eisai_dataset=True, tggate_dataset=False,
+        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        time="24 hr",
         ):
         # data load
         ## features array
@@ -83,14 +86,21 @@ class LOWCV:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
             self.df_info = utils.load_eisai(coef=self.coef, conv_name=True)
+            self.lst_compounds=lst_compounds_target
         elif tggate_dataset:
-            self.df_info = utils.load_tggate(coef=self.coef)
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time, 
+                lst_compounds=lst_compounds_target)
+            self.lst_compounds=lst_compounds_target
+        elif our_dataset:
+            self.df_info = utils.load_our(coef=self.coef, time=time)
+            self.lst_compounds=lst_compounds_our
         ## Set label encoder and y
         self._set_label()
         # Evaluation
         for i, arr_x in enumerate(self.lst_arr_x):
             y_pred = self._predict(arr_x[self.df_info["INDEX"].tolist(),:], self.y, params_lr, coef=self.coef)
-            lst_stats = utils.calc_stats(self.y, y_pred, lst_compounds_target, self.le)
+            lst_stats = utils.calc_stats(self.y, y_pred, self.lst_compounds, self.le)
             if i==0:
                 df_res=lst_stats[0]/n_model
                 acc=lst_stats[1]/n_model
@@ -162,7 +172,8 @@ class Clustering:
         concat=False, meta_viz=False,
         number=0,
         title="",
-        eisai_dataset=True, tggate_dataset=False,
+        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        time="24 hr"
         ):
         # data load
         ## features array
@@ -177,13 +188,18 @@ class Clustering:
         if size:
             self.coef=int(2000/size)
         else:
-            self.coef=10 # already compressed by size=200
+            self.coef=10 # already compressed by size=200 when featurize
         if eisai_dataset:
             self.df_info = utils.load_eisai(coef=self.coef, conv_name=False)
             self.lst_plot_compounds=lst_compounds_eisai
         elif tggate_dataset:
-            self.df_info = utils.load_tggate(coef=self.coef)
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time, 
+                lst_compounds=lst_compounds_target)
             self.lst_plot_compounds=lst_compounds_target
+        elif our_dataset:
+            self.df_info = utils.load_our(coef=self.coef, time=time)
+            self.lst_plot_compounds=lst_compounds_our            
         self._plot_scatter(embedding=(concat or meta_viz), number=number, title=title)
     
     def calc_f(
@@ -196,7 +212,8 @@ class Clustering:
         random_f=False,
         convertz=True,
         compression=False, n_components=16,
-        eisai_dataset=True,
+        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        time="24 hr"
         ):
         # data load
         ## features array
@@ -214,6 +231,10 @@ class Clustering:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
             self.df_info = utils.load_eisai(coef=self.coef, conv_name=True)
+        elif tggate_dataset:
+            self.df_info = utils.load_tggate(coef=self.coef, time=time)
+        elif our_dataset:
+            self.df_info = utils.load_our(coef=self.coef, time=time)
         # calc pseudo F score
         lst_f=[utils.pseudo_F(arr_x, self.df_info, "COMPOUND_NAME") for arr_x in self.lst_arr_x]
         if random_f:
@@ -246,5 +267,3 @@ class Clustering:
         plt.tight_layout()
         plt.show()        
 
-
-    

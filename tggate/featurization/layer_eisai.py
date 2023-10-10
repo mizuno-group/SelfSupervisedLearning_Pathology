@@ -27,36 +27,39 @@ parser = argparse.ArgumentParser(description='CLI inference')
 parser.add_argument('--note', type=str, help='feature')
 parser.add_argument('--seed', type=int, default=24771)
 parser.add_argument('--batch_size', type=int, default=128)
-parser.add_argument('--model_name', type=str, default='ResNet18') # architecture name
+parser.add_argument('--model_name', type=str, default='ResNet18') # model architecture name
+parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
 parser.add_argument('--dir_model', type=str, default='')
 parser.add_argument('--result_name', type=str, default='')
 parser.add_argument('--folder_name', type=str, default='')
 parser.add_argument('--pretrained', action='store_true')
 
 args = parser.parse_args()
-utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
+ssl.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 def main():
     # settings
     start = time.time() # for time stamp
     print(f"start: {start}")
-    # 1. model construction
+    # 1. model data preparation
+    # model
     model = featurize.prepare_model(
         model_name=args.model_name, 
-        ssl_name=args.ssl_name, 
+        ssl_name=args.ssl_name,
         model_path=args.dir_model,
-        pretrained=args.pretrained,
-        DEVICE=DEVICE
+        pretrained=args.pretrained, DEVICE=DEVICE
         )
-    ## file names
-    df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
-    lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext/{i}.npy" for i in df_info["FILE"].tolist()]
+    # load file names
+    df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/eisai_info.csv")
+    df_info=df_info.sort_values(by=["INDEX"])
+    lst_filein=[f"/work/gd43/share/pharm/eisai/patch/{i}.npy" for i in df_info["ID"].tolist()]
     # 2. inference & save results
     featurize.featurize_layer(
-        model, model_name=args.model_name,
+        model, model_name=args.model_name, ssl_name=args.ssl_name,
         batch_size=args.batch_size, lst_filein=lst_filein,
         folder_name=args.folder_name, result_name=args.result_name,
         DEVICE=DEVICE, num_patch=NUM_PATCH)
+    # 3. save config
     print('elapsed_time: {:.2f} min'.format((time.time() - start)/60))        
 
 if __name__ == '__main__':

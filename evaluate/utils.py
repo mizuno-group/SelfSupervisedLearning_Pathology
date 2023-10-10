@@ -55,7 +55,11 @@ def pca(x_train, x_test=None, n_components=32, train_only=False):
 
 def compress(arr, size=5):
     arr = arr.reshape(-1, size, arr.shape[1])
-    arr_all = np.concatenate([arr.max(axis=1), arr.max(axis=1),arr.max(axis=1)], axis=1)
+    arr_all = np.concatenate([
+        arr.max(axis=1), 
+        arr.min(axis=1),
+        arr.mean(axis=1),
+        ], axis=1)
     return arr_all
 
 def load_array(layer:int=10, folder="", name="", size=None, pretrained=False, n_model=5):
@@ -168,26 +172,20 @@ def multi_dataframe(df, coef:int=10):
     else:
         return df
 
-def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggate_info.csv"):
-    lst_compounds = [
-        "acetaminophen",
-        "bromobenzene",
-        "naphthyl isothiocyanate",
-        "carbon tetrachloride",
-    ]
+def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggate_info.csv", time="24 hr", lst_compounds=list()):
     df_info =pd.read_csv(filein)
     df_info["INDEX"]=list(range(df_info.shape[0]))
     df_info = df_info[
         (df_info["COMPOUND_NAME"].isin(lst_compounds))
         & ((df_info["DOSE_LEVEL"]=="High")|(df_info["DOSE_LEVEL"]=="Control"))
-        & (df_info["SACRI_PERIOD"] == "24 hr")
+        & (df_info["SACRI_PERIOD"] == time)
     ]
     df_info = df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX",]]
     df_info["COMPOUND_NAME"]=["vehicle" if dose==0 else name for name, dose in zip(df_info["COMPOUND_NAME"], df_info["DOSE"])]
     df_info=multi_dataframe(df_info, coef=coef)
     return df_info
 
-def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/processed/eisai_info.csv"):
+def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/processed/eisai_info.csv", time="24 hr"):
     dict_name={
         "Corn Oil":"vehicle",
         "Bromobenzene":"bromobenzene",
@@ -202,6 +200,15 @@ def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/
     df_info_eisai=multi_dataframe(df_info_eisai, coef=coef)
     df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
     return df_info_eisai
+
+def load_our(coef:int=1, filein="/workspace/231006_lab/data/our_info.csv", time="24 hr"):
+    dict_name={"control":"vehicle",}
+    df_info=pd.read_csv(filein)
+    df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
+    df_info=df_info[df_info["SACRI_PERIOD"]==time]
+    df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "BY", "INDEX"]]
+    df_info=multi_dataframe(df_info, coef=coef)
+    return df_info
 
 def calc_stats(y_true, y_pred, lst_compounds, le):
     """ Compounds Prediction """

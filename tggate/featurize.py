@@ -256,7 +256,8 @@ DICT_MODEL = {
     "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536, EfficientNetB3Featurize],
     "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
     "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 912, RegNetY16gfFeaturize]
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 912, RegNetY16gfFeaturize],
+    "DenseNet121": [torchvision.models.densenet121, 1024],
 }
 DICT_SSL={
     "barlowtwins":sslutils.BarlowTwins,
@@ -265,7 +266,7 @@ DICT_SSL={
     "simsiam":sslutils.SimSiam,
 }
 
-def prepare_model(model_name:str='ResNet18', model_path="", pretrained=False, DEVICE="cpu"):
+def prepare_model(model_name:str='ResNet18', ssl_name="barlowtwins",  model_path="", pretrained=False, DEVICE="cpu"):
     """
     preparation of models
     Parameters
@@ -285,12 +286,22 @@ def prepare_model(model_name:str='ResNet18', model_path="", pretrained=False, DE
         encoder.load_state_dict(torch.load(model_path))
         model=nn.Sequential(*list(encoder.children())[:-1])
     else:
-        backbone = nn.Sequential(*list(encoder.children())[:-1])
+        if model_name=="DenseNet121":
+            backbone = nn.Sequential(
+                *list(encoder.children())[:-1],
+                nn.ReLU(inplace=True),
+                nn.AdaptiveAvgPool2d((1, 1))
+                )
+        else:
+            backbone = nn.Sequential(
+                *list(encoder.children())[:-1],
+                )
         ssl_class = DICT_SSL[ssl_name](DEVICE=DEVICE)
         model = ssl_class.prepare_featurize_model(
             backbone, model_path=model_path,
             head_size=size,
         )
+    model.to(DEVICE)
     model.eval()
     return model
 

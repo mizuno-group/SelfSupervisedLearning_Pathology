@@ -22,28 +22,20 @@ plt.rcParams["font.size"] = 14
 
 # Settings
 root = "/workspace/230727_pharm"
-lst_compounds = [
-    "acetaminophen",
-    "bromobenzene",
-    "naphthyl isothiocyanate",
-    "carbon tetrachloride",
-]
-lst_compounds_eisai=[
-    "Corn Oil",
-    "Bromobenzene",
-    "CCl4",
-    "Naphthyl isothiocyanate",
-    "Methylcellulose",
-    "Acetaminophen"
-]
-lst_compounds_target=[
+lst_compounds_target_eisai=[
     "vehicle",
     "bromobenzene",
     "carbon tetrachloride",
     "naphthyl isothiocyanate",
     "acetaminophen",
 ]
-
+lst_compounds_target_our=[
+    "vehicle",
+    "thioacetamide",
+    "carbon tetrachloride",
+    "naphthyl isothiocyanate",
+    "acetaminophen",
+]
 class PredictCompExt:
     def __init__(self):
         self.lst_arr_x=[]
@@ -67,7 +59,8 @@ class PredictCompExt:
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
-        eisai_dataset=True,
+        eisai_dataset=True, our_dataset=False,
+        time="24 hr"
         ):
         """ evaluate compound prediction """
         # data load
@@ -76,10 +69,20 @@ class PredictCompExt:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
-        self.df_info = utils.load_tggate(coef=self.coef)
+
         if eisai_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_eisai)
             self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
-            self.lst_target_pred = lst_compounds_target
+            self.lst_target_pred = lst_compounds_target_eisai
+        elif our_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_our)
+            self.df_info2 = utils.load_our(coef=self.coef, time=time)
+            self.lst_target_pred = lst_compounds_target_our
+        
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(
@@ -174,7 +177,8 @@ class ClusteringExt:
         concat=False, meta_viz=False,
         number=0,
         title="",
-        eisai_dataset=True,
+        eisai_dataset=True, our_dataset=False,
+        time="24 hr"
         ):
         """ evaluate compound prediction """
         # data load
@@ -183,10 +187,18 @@ class ClusteringExt:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
-        self.df_info = utils.load_tggate(coef=self.coef)
         if eisai_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_eisai)
             self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
-            self.lst_compounds_target = lst_compounds_target
+            self.lst_target_pred = lst_compounds_target_eisai
+        elif our_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_our)
+            self.df_info2 = utils.load_our(coef=self.coef, time=time)
+            self.lst_target_pred = lst_compounds_target_our
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(
@@ -215,7 +227,8 @@ class ClusteringExt:
         convertz=True, z_ctrl=True,
         compression=False,
         n_components=16,
-        eisai_dataset=True,
+        eisai_dataset=True, our_dataset=False,
+        time="24 hr",
         random_state=24771,
         ):
         # data load
@@ -224,10 +237,18 @@ class ClusteringExt:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
-        self.df_info = utils.load_tggate(coef=self.coef)
         if eisai_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_eisai)
             self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
-            self.lst_compounds_target=lst_compounds_target
+            self.lst_target_pred = lst_compounds_target_eisai
+        elif our_dataset:
+            self.df_info = utils.load_tggate(
+                coef=self.coef, time=time,
+                lst_compounds=lst_compounds_target_our)
+            self.df_info2 = utils.load_our(coef=self.coef, time=time)
+            self.lst_target_pred = lst_compounds_target_our
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(

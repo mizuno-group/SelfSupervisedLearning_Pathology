@@ -46,6 +46,7 @@ parser.add_argument('--seed', type=int, default=0)
 # data settings
 parser.add_argument('--model_path', type=str, help='dir_model')
 parser.add_argument('--dir_result', type=str, help='result')
+parser.add_argument('--our_dataset', action='store_true')
 # model/learning settings
 parser.add_argument('--model_name', type=str, default='ResNet18') # model architecture name
 parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
@@ -70,7 +71,8 @@ DICT_MODEL={
     "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
     "ConvNextTiny": [torchvision.models.convnext_tiny, 768],
     "ResNet18": [torchvision.models.resnet18, 512],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888]
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888],
+    "DenseNet121": [torchvision.models.densenet121, 1024],
 }
 DICT_SSL={
     "barlowtwins":sslutils.BarlowTwins,
@@ -91,7 +93,11 @@ class Dataset_Batch(torch.utils.data.Dataset):
         else:
             self._transform = transform
         # load data
-        with open(f"/work/gd43/share/pharm/eisai/batch/batch.npy", 'rb') as f:
+        if args.our_dataset:
+            filein="/work/gd43/share/Lab/Rat_DILI/batch/batch.npy"
+        else:
+            filein="/work/gd43/share/pharm/eisai/batch/batch.npy"
+        with open(filein, 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
         gc.collect()
@@ -144,9 +150,16 @@ def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:f
     except:
         print("indicated model name is not implemented")
         ValueError
-    backbone = nn.Sequential(
-        *list(encoder.children())[:-1],
-        )
+    if model_name=="DenseNet121":
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+            )
+    else:
+        backbone = nn.Sequential(
+            *list(encoder.children())[:-1],
+            )
     model, criterion = ssl_class.prepare_model(backbone, head_size=size)
     model.load_state_dict(torch.load(args.model_path))
     optimizer = optim.Adam(model.parameters(), lr=lr)

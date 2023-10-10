@@ -19,7 +19,7 @@ class BarlowTwins:
     def prepare_model(self, backbone, head_size:int=512):
         model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
         criterion = barlowtwins.BarlowTwinsLoss()
-        model.to(DEVICE)
+        model.to(self.DEVICE)
         return model, criterion
 
     def prepare_transform(
@@ -29,7 +29,7 @@ class BarlowTwins:
         solar_plob=0.
         ):
         """return transforms for ssl"""
-        train_transform = ssl.utils.ssl_transform(
+        train_transform = sslmodel.utils.ssl_transform(
             color_plob=color_plob,
             blur_plob=blur_plob, 
             solar_plob=solar_plob,
@@ -57,9 +57,11 @@ class Byol:
     def prepare_model(self, backbone, head_size:int=512):
         """return ssl model"""
         model = byol.BYOL(
-            backbone, image_size=224, 
+            backbone, 
+            image_size=224, 
             hidden_layer=-1, 
-            projection_size = 256, projection_hidden_size = 512, 
+            projection_size = 256, 
+            projection_hidden_size = 512, 
             moving_average_decay = 0.99,
             DEVICE=self.DEVICE,
             )
@@ -162,7 +164,7 @@ class SimSiam:
             dim=1024,
             pred_dim=512,)
         criterion = simsiam.NegativeCosineSimilarity()
-        model.to(DEVICE)
+        model.to(self.DEVICE)
         return model, criterion
 
     def prepare_transform(
@@ -188,7 +190,7 @@ class SimSiam:
             dim=1024,
             pred_dim=512,)
         model=model.encoder
-        model.to(DEVICE)
+        model.to(self.DEVICE)
         return model
 
     def calc_loss(self, model, data, criterion):
