@@ -8,8 +8,6 @@ Please contact tadahaya[at]gmail.com before publishing your paper using the cont
 ## Authors
 - [Katsuhisa Morita](https://github.com/KatsuhisaMorita)  
     - main contributor  
-- [Yasuhiro Yoshikai](https://github.com/YoshikaiY)  
-    - created wsi_process module
 - [Tadahaya Mizuno](https://github.com/tadahayamiz)  
     - correspondence  
 

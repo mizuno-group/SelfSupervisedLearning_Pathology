@@ -28,13 +28,14 @@ parser.add_argument('--note', type=str, help='feature')
 parser.add_argument('--seed', type=int, default=24771)
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--model_name', type=str, default='ResNet18') # architecture name
+parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
 parser.add_argument('--dir_model', type=str, default='')
 parser.add_argument('--result_name', type=str, default='')
 parser.add_argument('--folder_name', type=str, default='')
 parser.add_argument('--pretrained', action='store_true')
 
 args = parser.parse_args()
-utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
+sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 def main():
     # settings

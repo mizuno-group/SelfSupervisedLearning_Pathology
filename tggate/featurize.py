@@ -5,6 +5,7 @@
 @author: Katsuhisa MORITA
 """
 import os
+import re
 import datetime
 from typing import List, Tuple, Union, Sequence
 
@@ -146,7 +147,7 @@ class DenseNet121Featurize(Featurize):
             DEVICE=DEVICE, 
             lst_size=[64,128,256,512,1024],
             )
-    def extraction(self, x):
+    def extraction(self, model, x):
         x = model[0][0](x)
         x = model[0][1](x)
         x = model[0][2](x)
@@ -172,7 +173,7 @@ class EfficientNetB3Featurize(Featurize):
             DEVICE=DEVICE, 
             lst_size=[24,32,48,136,1536],
             )
-    def extraction(self, x):
+    def extraction(self, model, x):
         x = model[0][0](x)
         x = model[0][1](x)
         x1 = torch.flatten(model[1](x), 1).detach().cpu().numpy().reshape(-1,24)
@@ -195,7 +196,7 @@ class ConvNextTinyFeaturize(Featurize):
             DEVICE=DEVICE, 
             lst_size=[96,192,384,768],
             )
-    def extraction(self, x):
+    def extraction(self, model, x):
         x = model[0][0](x)
         x = model[0][1](x)
         x1 = torch.flatten(model[1](x), 1).detach().cpu().numpy().reshape(-1,96)
@@ -216,7 +217,7 @@ class ConvNextTinyFeaturize(Featurize):
             DEVICE=DEVICE, 
             lst_size=[96,192,384,768],
             )
-    def extraction(self, x):
+    def extraction(self, model, x):
         x = model[0][0](x)
         x = model[0][1](x)
         x1 = torch.flatten(model[1](x), 1).detach().cpu().numpy().reshape(-1,96)
@@ -250,6 +251,23 @@ class RegNetY16gfFeaturize(Featurize):
         x5 = torch.flatten(model[2](x), 1).detach().cpu().numpy().reshape(-1,888)
         return x1, x2, x3, x4, x5
 
+def _load_state_dict_dense(model, weights):
+    # '.'s are no longer allowed in module names, but previous _DenseLayer
+    # has keys 'norm.1', 'relu.1', 'conv.1', 'norm.2', 'relu.2', 'conv.2'.
+    # They are also in the checkpoints in model_urls (pretrained-models). This pattern is used
+    # to find such keys.
+    pattern = re.compile(
+        r"^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$"
+    )
+    for key in list(weights.keys()):
+        res = pattern.match(key)
+        if res:
+            new_key = res.group(1) + res.group(2)
+            weights[new_key] = weights[key]
+            del weights[key]
+    model.load_state_dict(weights)
+    return model
+
 ## Featurize Methods
 # name: [Model_Class, last_layer_size, Featurize_Class]
 DICT_MODEL = {
@@ -257,7 +275,7 @@ DICT_MODEL = {
     "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
     "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
     "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 912, RegNetY16gfFeaturize],
-    "DenseNet121": [torchvision.models.densenet121, 1024],
+    "DenseNet121": [torchvision.models.densenet121, 1024, DenseNet121Featurize],
 }
 DICT_SSL={
     "barlowtwins":sslutils.BarlowTwins,
@@ -276,16 +294,22 @@ def prepare_model(model_name:str='ResNet18', ssl_name="barlowtwins",  model_path
 
     """
     # model building with indicated name
-    try:
+    if pretrained:
+        if model_name=="DenseNet121":
+            encoder = DICT_MODEL[model_name][0](weights=None)
+            encoder = _load_state_dict_dense(encoder, torch.load(model_path))
+            model = nn.Sequential(
+                *list(encoder.children())[:-1],
+                nn.ReLU(inplace=True),
+                nn.AdaptiveAvgPool2d((1, 1))
+                )
+        else:
+            encoder = DICT_MODEL[model_name][0](weights=None)
+            encoder.load_state_dict(torch.load(model_path))
+            model=nn.Sequential(*list(encoder.children())[:-1])
+    else:
         encoder = DICT_MODEL[model_name][0](weights=None)
         size = DICT_MODEL[model_name][1]
-    except:
-        print("indicated model name is not implemented")
-        ValueError
-    if pretrained:
-        encoder.load_state_dict(torch.load(model_path))
-        model=nn.Sequential(*list(encoder.children())[:-1])
-    else:
         if model_name=="DenseNet121":
             backbone = nn.Sequential(
                 *list(encoder.children())[:-1],

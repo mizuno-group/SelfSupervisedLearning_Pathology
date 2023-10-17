@@ -35,7 +35,7 @@ parser.add_argument('--folder_name', type=str, default='')
 parser.add_argument('--pretrained', action='store_true')
 
 args = parser.parse_args()
-ssl.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
+sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 def main():
     # settings
