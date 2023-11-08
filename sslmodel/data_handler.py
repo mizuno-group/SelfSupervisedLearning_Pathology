@@ -16,7 +16,7 @@ import pandas as pd
 
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, WeightedRandomSampler
 from PIL import Image
 
 # dataset
@@ -115,7 +115,7 @@ class TGGATE_SSL_Dataset_Batch(torch.utils.data.Dataset):
         return out_data
 
 def prep_dataloader(
-    dataset, batch_size:int, shuffle:bool=True, num_workers:int=4, pin_memory:bool=True, drop_last:bool=True
+    dataset, batch_size:int, shuffle:bool=True, num_workers:int=4, pin_memory:bool=True, drop_last:bool=True, sampler=None
     ) -> torch.utils.data.DataLoader:
     """
     prepare train and test loader
@@ -147,9 +147,27 @@ def prep_dataloader(
         num_workers=num_workers,
         pin_memory=pin_memory,
         worker_init_fn=_worker_init_fn,
-        drop_last=drop_last
+        drop_last=drop_last,
+        sampler=sampler,
         )
     return loader
+
+class BalancedSampler(WeightedRandomSampler):
+    def __init__(self, dataset, n_frac = None, n_samples = None):
+        avg = np.mean(dataset.labels, axis=0)
+        avg[avg == 0] = 0.5
+        avg[avg == 1] = 0.5
+        self.avg = avg
+        weights = (1 / (1 - avg + 1e-8)) * (1 - dataset.labels) + (
+            1 / (avg + 1e-8)
+        ) * dataset.labels
+        weights = np.max(weights, axis=1)
+        # weights = np.ones_like(dataset.labels[:,0])
+        self.weights = weights
+        if n_frac:
+            super().__init__(weights, int(n_frac * len(dataset)))
+        elif n_samples:
+            super().__init__(weights, n_samples)
 
 def _worker_init_fn(worker_id):
     """ fix the seed for each worker """

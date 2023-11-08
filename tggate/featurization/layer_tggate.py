@@ -51,7 +51,7 @@ def main():
         )
     ## file names
     df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
-    lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext/{i}.npy" for i in df_info["FILE"].tolist()]
+    lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext2/{i}.npy" for i in df_info["FILE"].tolist()]
     # 2. inference & save results
     featurize.featurize_layer(
         model, model_name=args.model_name,

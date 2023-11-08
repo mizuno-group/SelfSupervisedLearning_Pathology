@@ -45,13 +45,19 @@ def standardize_ctrl(arr, ctrl=list(), std=False):
     
 def pca(x_train, x_test=None, n_components=32, train_only=False):
     if train_only:
-        model = PCA(n_components=n_components)
-        return model.fit_transform(x_train) 
+        if n_components>100000:
+            return x_train
+        else:
+            model = PCA(n_components=n_components)
+            return model.fit_transform(x_train) 
     else:
-        model = PCA(n_components=n_components)
-        model.fit(x_train)
-        x_train, x_test = model.transform(x_train), model.transform(x_test)
-        return x_train, x_test   
+        if n_components>100000:
+            return x_train, x_test
+        else:
+            model = PCA(n_components=n_components)
+            model.fit(x_train)
+            x_train, x_test = model.transform(x_train), model.transform(x_test)
+            return x_train, x_test   
 
 def compress(arr, size=5):
     arr = arr.reshape(-1, size, arr.shape[1])
@@ -61,6 +67,27 @@ def compress(arr, size=5):
         arr.mean(axis=1),
         ], axis=1)
     return arr_all
+
+def load_array_fold(
+    df_info, fold:int=10, layer:int=10, 
+    folder="", name="layer", pretrained=False,
+    convertz=False,
+    compression=True, n_components=2, 
+    ):
+    if pretrained:
+        arr_x=np.load(f"{folder}/{name}{layer}.npy")
+    else:
+        arr_x=np.load(f"{folder}/fold{fold}_{name}{layer}.npy")
+    ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()
+    ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
+    arr_x_train, arr_x_test = arr_x.iloc[ind_train,:], arr_x.iloc[ind_test,:]
+    if compression:
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+        arr_x_train, arr_x_test = pca(arr_x_train, arr_x_test, n_components=n_components)
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+    elif convertz:
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+    return arr_x
 
 def load_array(layer:int=10, folder="", name="", size=None, pretrained=False, n_model=5):
     if pretrained:
@@ -155,22 +182,14 @@ def load_array_preprocess_two(
     return lst_arr_x, lst_arr_x2, arr_embedding, arr_embedding2
 
 def multi_dataframe(df, coef:int=10):
-    """augmentation"""
+    """augmentation [1,2,3]→[1,1,1,2,2,2,3,3,3] (coef=3)"""
     if coef!=1:
         ind=df["INDEX"].tolist()
-        df_y=[]
         df=df.T
-        lst_col=df.columns
-        for col in lst_col:
-            df_y+=[df[col]]*coef
-        df_y=pd.concat(df_y, axis=1).T
-        ind_new=[]
-        for i in ind:
-            ind_new+=[int(i*coef+v) for v in range(coef)]
-        df_y["INDEX"]=ind_new
-        return df_y
-    else:
-        return df
+        df=[i for col in df.columns.tolist() for i in [df[col]]*coef]
+        df=pd.concat(df, axis=1).T
+        df["INDEX"]=[x for i in ind for x in [int(i*coef+v) for v in range(coef)]]
+    return df
 
 def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggate_info.csv", time="24 hr", lst_compounds=list()):
     df_info =pd.read_csv(filein)
@@ -205,16 +224,16 @@ def load_our(coef:int=1, filein="/workspace/231006_lab/data/our_info.csv", time=
     dict_name={"control":"vehicle",}
     df_info=pd.read_csv(filein)
     df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
+    df_info["INDEX"]=list(range(len(df_info.index)))
     df_info=df_info[df_info["SACRI_PERIOD"]==time]
-    df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "BY", "INDEX"]]
+    df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX"]]
     df_info=multi_dataframe(df_info, coef=coef)
     return df_info
 
 def calc_stats(y_true, y_pred, lst_compounds, le):
-    """ Compounds Prediction """
+    """ Compounds Prediction (multi class, one label) with le and names"""
     # Macro Indicators
     lst_res=[]
-    df_res=pd.DataFrame(index=lst_compounds)
     for target in lst_compounds:
         i = list(le.classes_).index(target)
         auroc = metrics.roc_auc_score(y_true == i, y_pred[:, i])
@@ -225,6 +244,50 @@ def calc_stats(y_true, y_pred, lst_compounds, le):
     df_res=pd.DataFrame(lst_res)
     df_res.columns=["AUROC","AUPR","mAP"]
     df_res=df_res.T
+    df_res.columns=lst_compounds
+    df_res["Macro Average"]=df_res.mean(axis=1)
+    # Micro Indicators
+    acc = np.mean(np.argmax(y_pred, axis=1) == y_true)
+    ba = metrics.balanced_accuracy_score(y_true, np.argmax(y_pred, axis=1))
+    auroc = metrics.roc_auc_score(y_true, y_pred, average="micro", multi_class="ovr")
+    mAP = metrics.average_precision_score(y_true, y_pred, average="micro")
+    return df_res.T, acc, ba, auroc, mAP
+
+def calc_stats_multilabel(y_true, y_pred, lst_features):
+    """ finding classification (multi label)"""
+    # Macro Indicators
+    lst_res=[]
+    for i in range(len(lst_features)):
+        y_true_temp=y_true[:,i]
+        y_pred_temp=y_pred[:,i]
+        auroc = metrics.roc_auc_score(y_true_temp, y_pred_temp)
+        precision, recall, thresholds = metrics.precision_recall_curve(y_true_temp, y_pred_temp)
+        aupr = metrics.auc(recall, precision)
+        mAP = metrics.average_precision_score(y_true_temp, y_pred_temp)
+        y_pred_temp=[np.rint(i) for i in y_pred_temp]
+        acc = metrics.accuracy_score(y_true_temp, y_pred_temp)
+        ba = metrics.balanced_accuracy_score(y_true_temp, y_pred_temp)
+        lst_res.append(auroc, aupr, mAP, acc, ba,)
+    df_res=pd.DataFrame(
+        lst_res, 
+        index=lst_features,
+        columns=["AUROC","AUPR","mAP","Accuracy","Balanced Accuracy"]
+        )
+    # Micro Indicators
+    # not implemented
+    return df_res
+
+def calc_stats_multiclass(y_true, y_pred):
+    """ Compounds Prediction (multi class, one label) without le"""
+    # Macro Indicators
+    lst_res=[]
+    for i in range(max(y_true)+1):
+        auroc = metrics.roc_auc_score(y_true == i, y_pred[:, i])
+        precision, recall, thresholds = metrics.precision_recall_curve(y_true == i, y_pred[:, i])
+        aupr = metrics.auc(recall, precision)
+        mAP = metrics.average_precision_score(y_true == i, y_pred[:, i])
+        lst_res.append([auroc, aupr, mAP])
+    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"]).T
     df_res.columns=lst_compounds
     df_res["Macro Average"]=df_res.mean(axis=1)
     # Micro Indicators

@@ -7,10 +7,11 @@
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torchvision
 
 import sslmodel
-from sslmodel.models import barlowtwins, simsiam, byol, swav
+from sslmodel.models import barlowtwins, simsiam, byol, swav, linearhead
 
 class BarlowTwins:
     def __init__(self, DEVICE="cpu"):
@@ -38,7 +39,7 @@ class BarlowTwins:
         return train_transform
 
     def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
-        model = sslmodel.models.barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
+        model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
         model.load_state_dict(torch.load(model_path))
         model = model.backbone
         model.to(self.DEVICE)
@@ -87,7 +88,7 @@ class Byol:
     def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
         """return backbone model"""
         model = byol.BYOL(
-            encoder, image_size=224, 
+            backbone, image_size=224, 
             hidden_layer=-1, 
             projection_size = 256, projection_hidden_size = 512,
             moving_average_decay = 0.99,
@@ -156,7 +157,7 @@ class SimSiam:
     def __init__(self, DEVICE="cpu"):
         self.DEVICE=DEVICE
 
-    def prepare_model(self, backbone, head_size:int=512, DEVICE="cpu"):
+    def prepare_model(self, backbone, head_size:int=512):
         """return ssl model"""
         model= simsiam.SimSiam(
             backbone,
@@ -197,4 +198,44 @@ class SimSiam:
         x1, x2 = data[0].to(self.DEVICE), data[1].to(self.DEVICE) # put data on GPU
         p1, p2, z1, z2 = model(x1=x1, x2=x2) # forward
         loss = 0.5 * (criterion(z1, p2) + criterion(z2, p1))
+        return loss
+
+class WSL:
+    def __init__(self, DEVICE="cpu"):
+        self.DEVICE=DEVICE
+
+    def prepare_model(self, backbone, head_size:int=512, num_classes=8):
+        """return num_classifier model"""
+        model= linearhead.LinearHead(backbone, dim=head_size, num_classes=num_classes)
+        criterion = nn.BCEWithLogitsLoss()
+        model.to(self.DEVICE)
+        return model, criterion
+
+    def prepare_transform(
+        self,
+        color_plob=0.8,
+        blur_plob=0.2,
+        solar_plob=0.
+        ):
+        """return transforms"""
+        train_transform = sslmodel.utils.ssl_transform(
+            color_plob=color_plob,
+            blur_plob=blur_plob, 
+            solar_plob=solar_plob,
+            split=False, multi=False,
+            )
+        return train_transform
+
+    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, num_classes=8):
+        """return backbone model"""
+        model= linearhead.LinearHead(backbone, dim=head_size, num_classes=num_classes)
+        model.load_state_dict(torch.load(model_path))
+        model = model.backbone
+        model.to(self.DEVICE)
+        return model
+
+    def calc_loss(self, model, data, label, criterion):
+        data, label = data.to(self.DEVICE), label.to(self.DEVICE) # put data on GPU
+        output = model(data)
+        loss = criterion(output, label)
         return loss

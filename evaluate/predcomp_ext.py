@@ -59,7 +59,7 @@ class PredictCompExt:
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
-        eisai_dataset=True, our_dataset=False,
+        eisai_dataset=False, our_dataset=False,
         time="24 hr"
         ):
         """ evaluate compound prediction """
@@ -100,7 +100,7 @@ class PredictCompExt:
         self._set_label()
 
         ## Predict / Evaluate
-        df_res=pd.DataFrame(index=["AUROC","AUPR","mAP","Macro Average"],columns=lst_compounds_target).fillna(0)
+        lst_lst_stats=[]
         for i, (arr_x, arr_x2) in enumerate(zip(self.lst_arr_x, self.lst_arr_x2)):
             y_pred = self._predict(
                 arr_x[self.df_info["INDEX"].tolist()], 
@@ -108,23 +108,15 @@ class PredictCompExt:
                 self.y_train, params_lr
                 )
             lst_stats = utils.calc_stats(self.y_test, y_pred, self.lst_target_pred, self.le)
-            if i==0:
-                df_res=lst_stats[0]/n_model
-                acc=lst_stats[1]/n_model
-                ba=lst_stats[2]/n_model
-                auroc=lst_stats[3]/n_model
-                mAP=lst_stats[4]/n_model
-                y_preds=y_pred/n_model
-            else:
-                df_res+=lst_stats[0]/n_model
-                acc+=lst_stats[1]/n_model
-                ba+=lst_stats[2]/n_model
-                auroc+=lst_stats[3]/n_model
-                mAP+=lst_stats[4]/n_model
-                y_preds+=y_pred/n_model
+            lst_lst_stats.append(lst_stats)
+            if plot_heat:
+                if i==0:
+                    y_preds=y_pred/n_model
+                else:
+                    y_preds+=y_pred/n_model
         if plot_heat:
             self._plot_heat(y_preds)
-        return df_res, [acc, ba, auroc, mAP]
+        return lst_lst_stats
     
     def _set_label(self,):
         le = LabelEncoder()
@@ -177,7 +169,7 @@ class ClusteringExt:
         concat=False, meta_viz=False,
         number=0,
         title="",
-        eisai_dataset=True, our_dataset=False,
+        eisai_dataset=False, our_dataset=False,
         time="24 hr"
         ):
         """ evaluate compound prediction """

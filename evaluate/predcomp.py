@@ -32,6 +32,13 @@ lst_compounds_eisai=[
     "Methylcellulose",
     "Acetaminophen"
 ]
+lst_compounds_eisai_conv=[
+    "vehicle",
+    "bromobenzene",
+    "carbon tetrachloride",
+    "naphthyl isothiocyanate",
+    "acetaminophen",
+]
 lst_compounds_our=[
     "vehicle",
     "thioacetamide",
@@ -67,7 +74,7 @@ class LOWCV:
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
-        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        eisai_dataset=False, tggate_dataset=False, our_dataset=False,
         time="24 hr",
         ):
         # data load
@@ -86,7 +93,7 @@ class LOWCV:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
             self.df_info = utils.load_eisai(coef=self.coef, conv_name=True)
-            self.lst_compounds=lst_compounds_target
+            self.lst_compounds=lst_compounds_eisai_conv
         elif tggate_dataset:
             self.df_info = utils.load_tggate(
                 coef=self.coef, time=time, 
@@ -98,28 +105,19 @@ class LOWCV:
         ## Set label encoder and y
         self._set_label()
         # Evaluation
+        lst_lst_stats=[]
         for i, arr_x in enumerate(self.lst_arr_x):
             y_pred = self._predict(arr_x[self.df_info["INDEX"].tolist(),:], self.y, params_lr, coef=self.coef)
             lst_stats = utils.calc_stats(self.y, y_pred, self.lst_compounds, self.le)
-            if i==0:
-                df_res=lst_stats[0]/n_model
-                acc=lst_stats[1]/n_model
-                ba=lst_stats[2]/n_model
-                auroc=lst_stats[3]/n_model
-                mAP=lst_stats[4]/n_model
-                if plot_heat:
+            lst_lst_stats.append(lst_stats)
+            if plot_heat:
+                if i==0:
                     y_preds=y_pred/n_model
-            else:
-                df_res+=lst_stats[0]/n_model
-                acc+=lst_stats[1]/n_model
-                ba+=lst_stats[2]/n_model
-                auroc+=lst_stats[3]/n_model
-                mAP+=lst_stats[4]/n_model
-                if plot_heat:
+                else:
                     y_preds+=y_pred/n_model
         if plot_heat:
             self._plot_heat(y_preds)
-        return df_res, [acc, ba, auroc, mAP]
+        return lst_lst_stats
 
     def _predict(self, x, y, params, coef=5):
         """
@@ -172,7 +170,7 @@ class Clustering:
         concat=False, meta_viz=False,
         number=0,
         title="",
-        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        eisai_dataset=False, tggate_dataset=False, our_dataset=False,
         time="24 hr"
         ):
         # data load
@@ -188,7 +186,7 @@ class Clustering:
         if size:
             self.coef=int(2000/size)
         else:
-            self.coef=10 # already compressed by size=200 when featurize
+            self.coef=10 # already compressed by size=200 when featurization
         if eisai_dataset:
             self.df_info = utils.load_eisai(coef=self.coef, conv_name=False)
             self.lst_plot_compounds=lst_compounds_eisai
@@ -212,7 +210,7 @@ class Clustering:
         random_f=False,
         convertz=True,
         compression=False, n_components=16,
-        eisai_dataset=True, tggate_dataset=False, our_dataset=False,
+        eisai_dataset=False, tggate_dataset=False, our_dataset=False,
         time="24 hr"
         ):
         # data load
