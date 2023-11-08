@@ -274,7 +274,7 @@ DICT_MODEL = {
     "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536, EfficientNetB3Featurize],
     "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
     "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 912, RegNetY16gfFeaturize],
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888, RegNetY16gfFeaturize],
     "DenseNet121": [torchvision.models.densenet121, 1024, DenseNet121Featurize],
 }
 DICT_SSL={
