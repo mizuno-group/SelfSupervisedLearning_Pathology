@@ -6,12 +6,12 @@
 """
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import sklearn.metrics as metrics
 from sklearn.manifold import TSNE, MDS
 from sklearn.metrics import pairwise_distances
+from scipy import stats
 
 from inmoose.pycombat import pycombat_norm
 
@@ -287,8 +287,7 @@ def calc_stats_multiclass(y_true, y_pred):
         aupr = metrics.auc(recall, precision)
         mAP = metrics.average_precision_score(y_true == i, y_pred[:, i])
         lst_res.append([auroc, aupr, mAP])
-    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"]).T
-    df_res.columns=lst_compounds
+    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"], index=lst_compounds).T
     df_res["Macro Average"]=df_res.mean(axis=1)
     # Micro Indicators
     acc = np.mean(np.argmax(y_pred, axis=1) == y_true)
@@ -296,6 +295,21 @@ def calc_stats_multiclass(y_true, y_pred):
     auroc = metrics.roc_auc_score(y_true, y_pred, average="micro", multi_class="ovr")
     mAP = metrics.average_precision_score(y_true, y_pred, average="micro")
     return df_res.T, acc, ba, auroc, mAP
+
+def calc_stats_regression(y_true, y_pred, lst_features):
+    # Macro Indicator
+    lst_res=[]
+    for i in range(len(lst_features)):
+        y_true_temp=y_true[:,i]
+        y_pred_temp=y_pred[:,i]
+        r2 = metrics.r2_score(y_true_temp, y_pred_temp)
+        r = np.corrcoef(y_true_temp.reshape(1,-1),y_pred_temp.reshape(1,-1))[0][1]
+        spr = stats.spearmanr(y_true_temp,y_pred_temp)[0]
+        mae=metrics.mean_absolute_error(y_true_temp, t_pred_temp)
+        rmse=np.sqrt(mae)
+        lst_res.append([r2,r,spr,mae,rmse])
+    df_res=pd.DataFrame(lst_res, index=lst_features,columns=["R^2","PearsonR","SpearmanR","MSE","RMSE"])
+    return df_res
 
 def meta_vizualize(visualizations, projection_method=None):
     '''
