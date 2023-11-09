@@ -15,6 +15,11 @@ from scipy import stats
 
 from inmoose.pycombat import pycombat_norm
 
+# file name
+file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"
+file_eisai_info="/workspace/230727_pharm/data/processed/eisai_info.csv"
+file_our_info="/workspace/231006_lab/data/our_info.csv"
+
 def standardize(x_train, x_test=None, train_only=False):
     """ standardize / fillna with 0 """
     ss = StandardScaler()
@@ -71,8 +76,8 @@ def compress(arr, size=5):
 def load_array_fold(
     df_info, fold:int=10, layer:int=10, 
     folder="", name="layer", pretrained=False,
-    convertz=False,
-    compression=True, n_components=2, 
+    convertz=True,
+    compression=False, n_components=2, 
     ):
     if pretrained:
         arr_x=np.load(f"{folder}/{name}{layer}.npy")
@@ -80,14 +85,14 @@ def load_array_fold(
         arr_x=np.load(f"{folder}/fold{fold}_{name}{layer}.npy")
     ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()
     ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
-    arr_x_train, arr_x_test = arr_x.iloc[ind_train,:], arr_x.iloc[ind_test,:]
+    arr_x_train, arr_x_test = arr_x[ind_train,:], arr_x[ind_test,:]
     if compression:
         arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
         arr_x_train, arr_x_test = pca(arr_x_train, arr_x_test, n_components=n_components)
         arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
     elif convertz:
         arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
-    return arr_x
+    return arr_x_train, arr_x_test
 
 def load_array(layer:int=10, folder="", name="", size=None, pretrained=False, n_model=5):
     if pretrained:
@@ -191,7 +196,7 @@ def multi_dataframe(df, coef:int=10):
         df["INDEX"]=[x for i in ind for x in [int(i*coef+v) for v in range(coef)]]
     return df
 
-def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggate_info.csv", time="24 hr", lst_compounds=list()):
+def load_tggate(coef:int=1, filein=file_tggate_info, time="24 hr", lst_compounds=list()):
     df_info =pd.read_csv(filein)
     df_info["INDEX"]=list(range(df_info.shape[0]))
     df_info = df_info[
@@ -204,7 +209,7 @@ def load_tggate(coef:int=1, filein="/workspace/230727_pharm/data/processed/tggat
     df_info=multi_dataframe(df_info, coef=coef)
     return df_info
 
-def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/processed/eisai_info.csv", time="24 hr"):
+def load_eisai(coef:int=1, conv_name=True, filein=file_eisai_info, time="24 hr"):
     dict_name={
         "Corn Oil":"vehicle",
         "Bromobenzene":"bromobenzene",
@@ -220,7 +225,7 @@ def load_eisai(coef:int=1, conv_name=True, filein="/workspace/230727_pharm/data/
     df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
     return df_info_eisai
 
-def load_our(coef:int=1, filein="/workspace/231006_lab/data/our_info.csv", time="24 hr"):
+def load_our(coef:int=1, filein=file_our_info, time="24 hr"):
     dict_name={"control":"vehicle",}
     df_info=pd.read_csv(filein)
     df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
@@ -260,14 +265,17 @@ def calc_stats_multilabel(y_true, y_pred, lst_features):
     for i in range(len(lst_features)):
         y_true_temp=y_true[:,i]
         y_pred_temp=y_pred[:,i]
-        auroc = metrics.roc_auc_score(y_true_temp, y_pred_temp)
-        precision, recall, thresholds = metrics.precision_recall_curve(y_true_temp, y_pred_temp)
-        aupr = metrics.auc(recall, precision)
-        mAP = metrics.average_precision_score(y_true_temp, y_pred_temp)
-        y_pred_temp=[np.rint(i) for i in y_pred_temp]
-        acc = metrics.accuracy_score(y_true_temp, y_pred_temp)
-        ba = metrics.balanced_accuracy_score(y_true_temp, y_pred_temp)
-        lst_res.append(auroc, aupr, mAP, acc, ba,)
+        if y_true_temp.sum()==0:
+            lst_res.append([np.nan]*5)
+        else:
+            auroc = metrics.roc_auc_score(y_true_temp, y_pred_temp)
+            precision, recall, thresholds = metrics.precision_recall_curve(y_true_temp, y_pred_temp)
+            aupr = metrics.auc(recall, precision)
+            mAP = metrics.average_precision_score(y_true_temp, y_pred_temp)
+            y_pred_temp=[np.rint(i) for i in y_pred_temp]
+            acc = metrics.accuracy_score(y_true_temp, y_pred_temp)
+            ba = metrics.balanced_accuracy_score(y_true_temp, y_pred_temp)
+            lst_res.append([auroc, aupr, mAP, acc, ba,])
     df_res=pd.DataFrame(
         lst_res, 
         index=lst_features,
@@ -287,7 +295,7 @@ def calc_stats_multiclass(y_true, y_pred):
         aupr = metrics.auc(recall, precision)
         mAP = metrics.average_precision_score(y_true == i, y_pred[:, i])
         lst_res.append([auroc, aupr, mAP])
-    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"], index=lst_compounds).T
+    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"]).T
     df_res["Macro Average"]=df_res.mean(axis=1)
     # Micro Indicators
     acc = np.mean(np.argmax(y_pred, axis=1) == y_true)

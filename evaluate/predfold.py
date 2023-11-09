@@ -70,9 +70,14 @@ lst_prognosis=[
     'Cellular infiltration',
     'Vacuolization, cytoplasmic'
 ]
+file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
+file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
+file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding.csv"
+file_moa="/workspace/230310_TGGATE_liver/data/processed/moa.csv"
 
 class ClassificationFold:
     def __init__(self):
+        self.df_info=None
 
     def evaluate(
         self,
@@ -82,7 +87,7 @@ class ClassificationFold:
         pretrained=False,
         convertz=True,
         compression=False, n_components=16,
-        pred_method="logistic_regression", params_lr=dict(),
+        pred_method="logistic_regression", params=dict(),
         finding=False, prognosis=False, #prediction mode/multi label
         moa=False, compound_name=False, #prediction mode/multi class
         lst_features=list(),
@@ -91,7 +96,6 @@ class ClassificationFold:
         # set
         dict_pred_method={
             "logistic_regression":self._pred_lr,
-            "constant":self._constant,
         }
         # load
         if finding:
@@ -110,6 +114,7 @@ class ClassificationFold:
                 arr_x_train, arr_x_test = self._load_labels(
                     self.df_info, fold=fold, convertz=convertz,
                     compression=compression, n_components=n_components,
+                    prognosis=prognosis
                 )
             else:
                 arr_x_train, arr_x_test = utils.load_array_fold(
@@ -121,12 +126,15 @@ class ClassificationFold:
             y_train = self.df_info.loc[self.df_info["FOLD"]!=fold, self.lst_features].values
             y_test = self.df_info.loc[self.df_info["FOLD"]==fold, self.lst_features].values
             if finding or prognosis:
-                y_pred = _predict_multilabel(
-                    arr_x_train, arr_x_test, y_train, 
-                    params, dict_pred_method[pred_method])
+                if pred_method=="constant":
+                    y_pred=arr_x_test
+                else:
+                    y_pred = self._predict_multilabel(
+                        arr_x_train, arr_x_test, y_train, 
+                        params, dict_pred_method[pred_method])
                 res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features)
             elif moa or compound_name:
-                y_pred = _predict_multiclass(
+                y_pred = self._predict_multiclass(
                     arr_x_train, arr_x_test, y_train, 
                     params) # only lr is implemented
                 res = utils.calc_stats_multiclass(y_test, y_pred, )
@@ -141,7 +149,7 @@ class ClassificationFold:
             y_pred = pred(x_train, x_test, y_train[:,i], params)
             y_pred_all.append(y_pred)
         y_pred_all=np.stack(y_pred_all).T
-        return y_pred
+        return y_pred_all
 
     def _predict_multiclass(self, x_train, x_test, y_train, params):
         """prediction with logistic regression for one label, multi class task"""
@@ -151,18 +159,14 @@ class ClassificationFold:
         return y_pred
 
     def _pred_lr(self, x_train, x_test, y_train, params):
-        lr = LogisticRegression(**params)
-        lr.fit(x_train, y_train)
-        y_pred = model.predict_proba(x_test)[:,[1]]
+        model = LogisticRegression(**params)
+        model.fit(x_train, y_train)
+        y_pred = model.predict_proba(x_test)[:,1]
         return y_pred
-
-    def _constant(self, x_train, x_test, y_train, params):
-        """return x_test as y_test labels"""
-        return x_test
 
     def _load_classification(
         self,
-        filein="/workspace/230310_tggate_liver/data/classification/finding.csv", 
+        filein=file_classification, 
         lst_features=list()):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
@@ -173,7 +177,7 @@ class ClassificationFold:
 
     def _load_prognosis(
         self,
-        filein="/workspace/230310_tggate_liver/data/prognosis/finding.csv", 
+        filein=file_prognosis, 
         lst_features=list()):
         self.df_info=pd.read_csv(filein)
         if lst_features:
@@ -183,9 +187,9 @@ class ClassificationFold:
 
     def _load_moa(
         self,
-        filein_all="/workspace/230310_tggate_liver/result/info_fold.csv",
-        filein_moa="/workspace/230310_tggate_liver/data/processed/moa.csv",
-        )
+        filein_all=file_all,
+        filein_moa=file_moa,
+        ):
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
@@ -199,9 +203,9 @@ class ClassificationFold:
 
     def _load_compound_name(
         self,
-        filein_all="/workspace/230310_tggate_liver/result/info_fold.csv",
-        filein_moa="/workspace/230310_tggate_liver/data/processed/moa.csv",
-        )
+        filein_all=file_all,
+        filein_moa=file_moa,
+        ):
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
@@ -216,7 +220,7 @@ class ClassificationFold:
     def _load_labels(
         self,
         df_info, 
-        filein="/workspace/230310_tggate_liver/result/info_fold.csv",
+        filein=file_all,
         fold:int=0, 
         convertz=False,
         compression=False, n_components=16,
@@ -230,7 +234,7 @@ class ClassificationFold:
             arr_x=df.loc[:,lst_classification].values
         ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()
         ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
-        arr_x_train, arr_x_test = arr_x.iloc[ind_train,:], arr_x.iloc[ind_test,:]
+        arr_x_train, arr_x_test = arr_x[ind_train,:], arr_x[ind_test,:]
         if compression:
             arr_x_train, arr_x_test = utils.standardize(arr_x_train, arr_x_test)
             arr_x_train, arr_x_test = utils.pca(arr_x_train, arr_x_test, n_components=n_components)
@@ -242,6 +246,7 @@ class ClassificationFold:
 class PredFold:
     """For example, for biochemical values prediction"""
     def __init__(self):
+        self.df_info=None
 
     def evaluate(
         self,
@@ -286,7 +291,7 @@ class PredFold:
     
     def _load_info(
         self,
-        filein=,
+        filein=file_all,
         lst_features=list()):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
@@ -334,10 +339,11 @@ class PredFold:
 class ClusteringFold:
     """Pseudo F Score"""
     def __init__(self):
+        self.df_info=None
 
     def evaluate(
         self,
-        folder=f"",
+        folder="",
         name="",
         layer=0,
         pretrained=False,
@@ -345,9 +351,10 @@ class ClusteringFold:
         compression=False, n_components=16,
         target="",
         random_f=True,
+        random_state=0,
         ):
         # load info
-        self._load_info(target)
+        self._load_info(target=target)
 
         # Predict / Evaluate
         lst_f=[]
@@ -360,8 +367,9 @@ class ClusteringFold:
                 compression=compression, n_components=n_components,
             )
             df_info_temp = self.df_info.loc[self.df_info["FOLD"]==fold]
+            df_info_temp.loc[:,"INDEX"]=list(range(df_info_temp.shape[0]))
             if random_f:
-                f_random=utils.pseudo_F(np.random.default_rng(random_state).permutation(arr_x,axis=0), self.df_info_temp, target)
+                f_random=utils.pseudo_F(np.random.default_rng(random_state).permutation(arr_x,axis=0), df_info_temp, target)
                 lst_f_random.append(f_random)
             f=utils.pseudo_F(arr_x, df_info_temp, target)
             lst_f.append(f)                
@@ -372,9 +380,10 @@ class ClusteringFold:
     
     def _load_info(
         self,
-        filein_all="/workspace/230310_tggate_liver/result/info_fold.csv",
-        filein_moa="/workspace/230310_tggate_liver/data/processed/moa.csv",
-        )
+        filein_all=file_all,
+        filein_moa=file_moa,
+        target=""
+        ):
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
