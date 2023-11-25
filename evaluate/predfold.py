@@ -70,6 +70,37 @@ lst_prognosis=[
     'Cellular infiltration',
     'Vacuolization, cytoplasmic'
 ]
+lst_compounds=[
+    'erythromycin ethylsuccinate',
+    'fenofibrate',
+    'chlorpromazine',
+    'cimetidine',
+    'thioridazine',
+    'haloperidol',
+    'acetaminophen',
+    'ranitidine',
+    'chlorpropamide',
+    'clofibrate',
+    'diclofenac',
+    'sulindac',
+    'sulfasalazine',
+    'tetracycline',
+    'carboplatin',
+    'azathioprine',
+    'phenylbutazone',
+    'tolbutamide',
+    'nitrofurantoin',
+    'famotidine',
+    'gemfibrozil',
+    'mefenamic acid',
+    'chloramphenicol',
+    'glibenclamide',
+    'aspirin',
+    'nitrofurazone',
+    'naproxen',
+    'cyclophosphamide',
+    'lomustine',
+]
 file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
 file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
 file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding.csv"
@@ -105,11 +136,13 @@ class ClassificationFold:
         if moa:
             self._load_moa()
         if compound_name:
-            self._load_compound_name()
+            pass # load for each fold
 
         # Predict / Evaluate
         lst_res=[]
         for fold in range(5):
+            if compound_name:
+                self._load_compound_name(fold=fold)
             if finding_base:
                 arr_x_train, arr_x_test = self._load_labels(
                     self.df_info, fold=fold, convertz=convertz,
@@ -203,6 +236,7 @@ class ClassificationFold:
 
     def _load_compound_name(
         self,
+        fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
         ):
@@ -213,9 +247,14 @@ class ClassificationFold:
         moa_df["MoA"] = np.argmax(moa_df[moa_df.columns[1:]].values,axis=1)
         df_info = pd.merge(df_info, moa_df, on = "COMPOUND_NAME")
         df_info = df_info[df_info["SACRI_PERIOD"].isin(["4 day", "8 day", "15 day", "29 day"]) & (df_info["DOSE"]>0)]
+        # drop not existing compounds in fold
+        lst_tf=(df_info.loc[df_info["FOLD"]==fold,lst_compounds].sum()!=0).tolist()
+        lst_compounds_fold=[lst_compounds[v] for v, i in enumerate(lst_tf) if i]
+        df_info=df_info[df_info["COMPOUND_NAME"].isin(lst_compounds_fold)]
+        df_info["COMP"] = np.argmax(df_info.loc[:,lst_compounds_fold].values,axis=1)
         # set
-        self.df_info = df_info.loc[:,["COMPOUND_NAME","FOLD","INDEX"]]
-        self.lst_features="COMPOUND_NAME"
+        self.df_info = df_info.loc[:,["COMP","FOLD","INDEX"]]
+        self.lst_features="COMP"
 
     def _load_labels(
         self,
@@ -347,6 +386,7 @@ class ClusteringFold:
         name="",
         layer=0,
         pretrained=False,
+        finding_base=False,
         convertz=True,
         compression=False, n_components=16,
         target="",
@@ -360,12 +400,19 @@ class ClusteringFold:
         lst_f=[]
         lst_f_random=[]
         for fold in range(5):
-            _, arr_x = utils.load_array_fold(
-                self.df_info, fold=fold, layer=layer,
-                folder=folder, name=name, pretrained=pretrained,
-                convertz=convertz,
-                compression=compression, n_components=n_components,
-            )
+            if finding_base:
+                arr_x = self._load_labels(
+                    self.df_info, fold=fold,
+                    convertz=convertz,
+                    compression=compression, n_components=n_components,
+                )
+            else:
+                _, arr_x = utils.load_array_fold(
+                    self.df_info, fold=fold, layer=layer,
+                    folder=folder, name=name, pretrained=pretrained,
+                    convertz=convertz,
+                    compression=compression, n_components=n_components,
+                )
             df_info_temp = self.df_info.loc[self.df_info["FOLD"]==fold]
             df_info_temp.loc[:,"INDEX"]=list(range(df_info_temp.shape[0]))
             if random_f:
@@ -394,4 +441,25 @@ class ClusteringFold:
         # set
         self.df_info = df_info.loc[:,[target,"FOLD","INDEX"]]
         self.target=target
-    
+
+    def _load_labels(
+        self,
+        df_info, 
+        filein=file_all,
+        fold:int=0, 
+        convertz=False,
+        compression=False, n_components=16,
+        ):
+        ###finding label###
+        df=pd.read_csv(filein)
+        arr_x=df.loc[:,lst_classification].values
+        ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()
+        ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
+        arr_x_train, arr_x_test = arr_x[ind_train,:], arr_x[ind_test,:]
+        if compression:
+            arr_x_train, arr_x_test = utils.standardize(arr_x_train, arr_x_test)
+            arr_x_train, arr_x_test = utils.pca(arr_x_train, arr_x_test, n_components=n_components)
+            arr_x_train, arr_x_test = utils.standardize(arr_x_train, arr_x_test)
+        elif convertz:
+            arr_x_train, arr_x_test = utils.standardize(arr_x_train, arr_x_test)
+        return arr_x_test #only retrun test array

@@ -18,7 +18,8 @@ from inmoose.pycombat import pycombat_norm
 # file name
 file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"
 file_eisai_info="/workspace/230727_pharm/data/processed/eisai_info.csv"
-file_our_info="/workspace/231006_lab/data/our_info.csv"
+file_rat_info="/workspace/231006_lab/data/our_info.csv"
+file_mouse_info="/workspace/231114_mouse_DILI/data/mouse_info.csv"
 
 def standardize(x_train, x_test=None, train_only=False):
     """ standardize / fillna with 0 """
@@ -225,13 +226,27 @@ def load_eisai(coef:int=1, conv_name=True, filein=file_eisai_info, time="24 hr")
     df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
     return df_info_eisai
 
-def load_our(coef:int=1, filein=file_our_info, time="24 hr"):
+def load_rat(coef:int=1, filein=file_rat_info, time="24 hr"):
     dict_name={"control":"vehicle",}
     df_info=pd.read_csv(filein)
     df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
     df_info["INDEX"]=list(range(len(df_info.index)))
     df_info=df_info[df_info["SACRI_PERIOD"]==time]
     df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX"]]
+    df_info=multi_dataframe(df_info, coef=coef)
+    return df_info
+
+def load_mouse(coef:int=1, filein=file_mouse_info, time="24 hr", lst_compounds=list()):
+    dict_name={
+        "control":"vehicle",
+        "ccl4":"carbon tetrachloride",
+        "1-naphthyl isothiocyanate":"naphthyl isothiocyanate",
+        }
+    df_info=pd.read_csv(filein)
+    df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["compound"]]
+    df_info["INDEX"]=list(range(len(df_info.index)))
+    df_info = df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]
+    df_info=df_info.loc[:,["COMPOUND_NAME", "INDEX"]]
     df_info=multi_dataframe(df_info, coef=coef)
     return df_info
 
@@ -290,12 +305,16 @@ def calc_stats_multiclass(y_true, y_pred):
     # Macro Indicators
     lst_res=[]
     for i in range(max(y_true)+1):
-        auroc = metrics.roc_auc_score(y_true == i, y_pred[:, i])
-        precision, recall, thresholds = metrics.precision_recall_curve(y_true == i, y_pred[:, i])
-        aupr = metrics.auc(recall, precision)
-        mAP = metrics.average_precision_score(y_true == i, y_pred[:, i])
-        lst_res.append([auroc, aupr, mAP])
-    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP"]).T
+        try:
+            auroc = metrics.roc_auc_score(y_true == i, y_pred[:, i])
+            precision, recall, thresholds = metrics.precision_recall_curve(y_true == i, y_pred[:, i])
+            aupr = metrics.auc(recall, precision)
+            mAP = metrics.average_precision_score(y_true == i, y_pred[:, i])
+        except:
+            auroc, auppr, mAP = np.nan, np.nan, np.nan
+        ba=metrics.balanced_accuracy_score(y_true == i, [np.rint(v) for v in y_pred[:, i]])
+        lst_res.append([auroc, aupr, mAP, ba])
+    df_res=pd.DataFrame(lst_res, columns=["AUROC","AUPR","mAP","Balanced Accuracy"]).T
     df_res["Macro Average"]=df_res.mean(axis=1)
     # Micro Indicators
     acc = np.mean(np.argmax(y_pred, axis=1) == y_true)
