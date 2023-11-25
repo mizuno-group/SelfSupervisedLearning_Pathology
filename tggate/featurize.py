@@ -282,6 +282,7 @@ DICT_SSL={
     "swav":sslutils.SwaV,
     "byol":sslutils.Byol,
     "simsiam":sslutils.SimSiam,
+    "wsl":sslutils.WSL,
 }
 
 def prepare_model(model_name:str='ResNet18', ssl_name="barlowtwins",  model_path="", pretrained=False, DEVICE="cpu"):
