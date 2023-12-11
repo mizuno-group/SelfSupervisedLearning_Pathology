@@ -200,7 +200,8 @@ def multi_dataframe(df, coef:int=10):
 
 class LoadInfo:
     def __init__(self):
-
+        return 
+        
     def load(
         self, 
         coef:int=1,
