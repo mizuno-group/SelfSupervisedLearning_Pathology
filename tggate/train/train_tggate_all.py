@@ -76,6 +76,7 @@ DICT_SSL={
     "swav":sslutils.SwaV,
     "byol":sslutils.Byol,
     "simsiam":sslutils.SimSiam,
+    "barlowtwins_ws":sslutils.BarlowTwinsWS,
 }
 
 # prepare data

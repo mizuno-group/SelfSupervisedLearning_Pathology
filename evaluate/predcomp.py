@@ -83,7 +83,9 @@ class LOWCV:
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
-        eisai_dataset=False, tggate_dataset=False, rat_dataset=False, mouse_dataset=False,
+        eisai_dataset=False, shionogi_dataset=False,
+        tggate_dataset=False, 
+        rat_dataset=False, mouse_dataset=False,
         time="24 hr",
         ):
         # data load
@@ -101,19 +103,21 @@ class LOWCV:
         else:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
-            self.df_info = utils.load_eisai(coef=self.coef, conv_name=True)
             self.lst_compounds=lst_compounds_eisai_conv
         elif tggate_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time, 
-                lst_compounds=lst_compounds_target)
             self.lst_compounds=lst_compounds_target
         elif rat_dataset:
-            self.df_info = utils.load_rat(coef=self.coef, time=time)
             self.lst_compounds=lst_compounds_rat
         elif mouse_dataset:
-            self.df_info = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_mouse)
             self.lst_compounds=lst_compounds_mouse
+        self.df_info=utils.LoadInfo().load(
+            coef=self.coef, time=time, conv_name=True,
+            lst_compounds=self.lst_compounds,
+            eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
+            tggate_dataset=tggate_dataset, 
+            rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            )
+        
         ## Set label encoder and y
         self._set_label()
         # Evaluation
@@ -182,7 +186,9 @@ class Clustering:
         concat=False, meta_viz=False,
         number=0,
         title="",
-        eisai_dataset=False, tggate_dataset=False, rat_dataset=False, mouse_dataset=False,
+        eisai_dataset=False, shionogi_dataset=False,
+        tggate_dataset=False, 
+        rat_dataset=False, mouse_dataset=False,
         time="24 hr"
         ):
         # data load
@@ -200,19 +206,20 @@ class Clustering:
         else:
             self.coef=10 # already compressed by size=200 when featurization
         if eisai_dataset:
-            self.df_info = utils.load_eisai(coef=self.coef, conv_name=False)
             self.lst_plot_compounds=lst_compounds_eisai
         elif tggate_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time, 
-                lst_compounds=lst_compounds_target)
             self.lst_plot_compounds=lst_compounds_target
         elif rat_dataset:
-            self.df_info = utils.load_rat(coef=self.coef, time=time)
             self.lst_plot_compounds=lst_compounds_rat      
         elif mouse_dataset:
-            self.df_info = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_mouse)
-            self.lst_plot_compounds=lst_compounds_mouse         
+            self.lst_plot_compounds=lst_compounds_mouse  
+        self.df_info=utils.LoadInfo().load(
+            coef=self.coef, time=time, conv_name=False,
+            lst_compounds=self.lst_compounds,
+            eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
+            tggate_dataset=tggate_dataset, 
+            rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            )       
         self._plot_scatter(embedding=(concat or meta_viz), number=number, title=title)
     
     def calc_f(
@@ -242,14 +249,13 @@ class Clustering:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
-        if eisai_dataset:
-            self.df_info = utils.load_eisai(coef=self.coef, conv_name=True)
-        elif tggate_dataset:
-            self.df_info = utils.load_tggate(coef=self.coef, time=time)
-        elif rat_dataset:
-            self.df_info = utils.load_rat(coef=self.coef, time=time)
-        elif mouse_dataset:
-            self.df_info = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_mouse)
+        self.df_info=utils.LoadInfo().load(
+            coef=self.coef, time=time, conv_name=True,
+            lst_compounds=list(),
+            eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
+            tggate_dataset=tggate_dataset, 
+            rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            )      
         # calc pseudo F score
         lst_f=[utils.pseudo_F(arr_x, self.df_info, "COMPOUND_NAME") for arr_x in self.lst_arr_x]
         if random_f:

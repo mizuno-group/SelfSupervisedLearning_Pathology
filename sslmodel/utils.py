@@ -102,6 +102,55 @@ def ssl_transform(
     else:
         return augmentation
 
+def weak_strong_transform(
+    size=(224,224),
+    color_plob_w=0.2,
+    blur_plob_w=0.1,
+    solar_plob_w=0,
+    color_plob_s=1,
+    blur_plob_s=0.8,
+    solar_plob_s=0.2,
+    ):
+    # normalization
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])
+    # augmentation (weak)
+    weak_augmentation = transforms.Compose([
+        transforms.RandomHorizontalFlip(p=0.5),
+        random_rotation_transform(rr_prob=1., rr_degrees=[0,180]),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=color_plob_w
+            ),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([
+            transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=blur_plob_w
+            ),
+        RandomSolarization(prob=solar_plob_w),
+        transforms.RandomResizedCrop(size),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    # augmentation (strong)
+    strong_augmentation = transforms.Compose([
+        transforms.RandomHorizontalFlip(p=0.5),
+        random_rotation_transform(rr_prob=1., rr_degrees=[0,180]),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=color_plob_s
+            ),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([
+            transforms.GaussianBlur((3, 3), (1.0, 2.0))], p=blur_plob_s
+            ),
+        RandomSolarization(prob=solar_plob_s),
+        transforms.RandomResizedCrop(size),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    return WeakStrongTwoCropsTransform(weak_augmentation, strong_augmentation)
+
+
 def my_transform():
     # normalization
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -129,6 +178,18 @@ def my_transform():
         normalize
     ])
     return train_data_transform, other_data_transform
+
+class WeakStrongTwoCropsTransform:
+    """Take two crops of one image as the query and key."""
+
+    def __init__(self, weak_transform, strong_transform):
+        self.weak_transform = weak_transform
+        self.strong_transform = strong_transform
+
+    def __call__(self, x):
+        q = self.weak_transform(x)
+        k = self.strong_transform(x)
+        return [q, k]
 
 class TwoCropsTransform:
     """Take two random crops of one image as the query and key."""
