@@ -201,11 +201,12 @@ def multi_dataframe(df, coef:int=10):
 class LoadInfo:
     def __init__(self):
         return 
-        
+
     def load(
         self, 
         coef:int=1,
         time="24 hr",
+        conc="High",
         lst_compounds=list(),
         conv_name=True,
         tggate_dataset=False,
@@ -219,7 +220,7 @@ class LoadInfo:
         if eisai_dataset:
             return self.load_eisai(coef=coef, filein=file_eisai_info, time=time, conv_name=conv_name)
         if shionogi_dataset:
-            return self.load_shionogi(coef=coef, filein=file_shionogi_info, time=time, lst_compounds=lst_compounds)
+            return self.load_shionogi(coef=coef, filein=file_shionogi_info, time=time, lst_compounds=lst_compounds, unique=True, conc=conc)
         if rat_dataset:
             return self.load_rat(coef=coef, filein=file_rat_info, time=time)
         if mouse_dataset:
@@ -257,10 +258,14 @@ class LoadInfo:
         df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
         return df_info_eisai
 
-    def load_shionogi(self, coef:int=1, filein=file_shionogi_info, time="all", lst_compounds=list(), unique=True):
+    def load_shionogi(self, coef:int=1, filein=file_shionogi_info, time="all", lst_compounds=list(), unique=True, conc="all"):
         df_info=pd.read_csv(filein)
         if time!="all":
             df_info=df_info[df_info["TIME"]==time]
+        if conc!="all":
+            df_info = df_info[
+                ((df_info["CONCENTRATION"]==conc)|(df_info["CONCENTRATION"]=="Control"))
+            ]
         if unique:
             df_info=df_info.loc[df_info["SAMPLE"].values,:]
         df_info=df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]

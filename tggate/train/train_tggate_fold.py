@@ -92,7 +92,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
         else:
             self._transform = transform
         # load data
-        with open(f"/work/gd43/share/tggates/liver/fold/fold{fold}/batch_{batch_number}.npy", 'rb') as f:
+        with open(f"/work/gd43/share/tggates/liver/batch_fold/batch_{fold}/batch_{batch_number}.npy", 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
         gc.collect()

@@ -39,6 +39,9 @@ lst_compounds_eisai_conv=[
     "naphthyl isothiocyanate",
     "acetaminophen",
 ]
+lst_compounds_shionogi=[
+    "vehicle",
+]
 lst_compounds_rat=[
     "vehicle",
     "thioacetamide",
@@ -104,6 +107,8 @@ class LOWCV:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
             self.lst_compounds=lst_compounds_eisai_conv
+        elif shionogi_dataset:
+            self.lst_compounds=lst_compounds_shionogi
         elif tggate_dataset:
             self.lst_compounds=lst_compounds_target
         elif rat_dataset:
