@@ -41,6 +41,10 @@ lst_compounds_eisai_conv=[
 ]
 lst_compounds_shionogi=[
     "vehicle",
+    "voriconazole",
+    "thioacetamide",
+    "phenylhydrazine",
+    "streptozotocin",
 ]
 lst_compounds_rat=[
     "vehicle",
@@ -77,8 +81,8 @@ class LOWCV:
 
     def evaluate(
         self,
-        folder=f"{root}/data/feature/eisai/feature_all",
-        name="_frozen",
+        folder="",
+        name="",
         pretrained=False,
         layer=4, size=None,
         n_model=5,
@@ -121,6 +125,7 @@ class LOWCV:
             eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
             tggate_dataset=tggate_dataset, 
             rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            conc="High"
             )
         
         ## Set label encoder and y
@@ -209,22 +214,25 @@ class Clustering:
         if size:
             self.coef=int(2000/size)
         else:
-            self.coef=10 # already compressed by size=200 when featurization
+            self.coef=10 # already compressed by size=200
         if eisai_dataset:
-            self.lst_plot_compounds=lst_compounds_eisai
+            self.lst_compounds=lst_compounds_eisai_conv
+        elif shionogi_dataset:
+            self.lst_compounds=lst_compounds_shionogi
         elif tggate_dataset:
-            self.lst_plot_compounds=lst_compounds_target
+            self.lst_compounds=lst_compounds_target
         elif rat_dataset:
-            self.lst_plot_compounds=lst_compounds_rat      
+            self.lst_compounds=lst_compounds_rat
         elif mouse_dataset:
-            self.lst_plot_compounds=lst_compounds_mouse  
+            self.lst_compounds=lst_compounds_mouse
         self.df_info=utils.LoadInfo().load(
-            coef=self.coef, time=time, conv_name=False,
+            coef=self.coef, time=time, conv_name=True,
             lst_compounds=self.lst_compounds,
             eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
             tggate_dataset=tggate_dataset, 
             rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
-            )       
+            conc="High"
+            )
         self._plot_scatter(embedding=(concat or meta_viz), number=number, title=title)
     
     def calc_f(
@@ -237,7 +245,9 @@ class Clustering:
         random_f=False,
         convertz=True,
         compression=False, n_components=16,
-        eisai_dataset=False, tggate_dataset=False, rat_dataset=False, mouse_dataset=False,
+        eisai_dataset=False, shionogi_dataset=False, 
+        tggate_dataset=False, 
+        rat_dataset=False, mouse_dataset=False,
         time="24 hr"
         ):
         # data load
@@ -254,13 +264,24 @@ class Clustering:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
+        if eisai_dataset:
+            self.lst_compounds=lst_compounds_eisai_conv
+        elif shionogi_dataset:
+            self.lst_compounds=lst_compounds_shionogi
+        elif tggate_dataset:
+            self.lst_compounds=lst_compounds_target
+        elif rat_dataset:
+            self.lst_compounds=lst_compounds_rat
+        elif mouse_dataset:
+            self.lst_compounds=lst_compounds_mouse
         self.df_info=utils.LoadInfo().load(
             coef=self.coef, time=time, conv_name=True,
-            lst_compounds=list(),
+            lst_compounds=self.lst_compounds,
             eisai_dataset=eisai_dataset, shionogi_dataset=shionogi_dataset, 
             tggate_dataset=tggate_dataset, 
             rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
-            )      
+            conc="High"
+            )
         # calc pseudo F score
         lst_f=[utils.pseudo_F(arr_x, self.df_info, "COMPOUND_NAME") for arr_x in self.lst_arr_x]
         if random_f:
