@@ -239,3 +239,19 @@ class WSL:
         output = model(data)
         loss = criterion(output, label)
         return loss
+
+# Test Class
+class BarlowTwinsWS(BarlowTwins):
+    def __init__(self, DEVICE="cpu"):
+        super().__init__(DEVICE=DEVICE)
+        self.DEVICE=DEVICE
+
+    def prepare_transform(
+        self,
+        color_plob=None,
+        blur_plob=None,
+        solar_plob=None,
+        ):
+        """return transforms for ssl"""
+        train_transform = sslmodel.utils.weak_strong_transform()
+        return train_transform

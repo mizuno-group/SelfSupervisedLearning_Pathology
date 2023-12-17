@@ -18,6 +18,7 @@ from inmoose.pycombat import pycombat_norm
 # file name
 file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"
 file_eisai_info="/workspace/230727_pharm/data/processed/eisai_info.csv"
+file_shionogi_info="/workspace/230727_pharm/data/processed/shionogi_info.csv"
 file_rat_info="/workspace/231006_lab/data/our_info.csv"
 file_mouse_info="/workspace/231114_mouse_DILI/data/mouse_info.csv"
 
@@ -197,58 +198,104 @@ def multi_dataframe(df, coef:int=10):
         df["INDEX"]=[x for i in ind for x in [int(i*coef+v) for v in range(coef)]]
     return df
 
-def load_tggate(coef:int=1, filein=file_tggate_info, time="24 hr", lst_compounds=list()):
-    df_info =pd.read_csv(filein)
-    df_info["INDEX"]=list(range(df_info.shape[0]))
-    df_info = df_info[
-        (df_info["COMPOUND_NAME"].isin(lst_compounds))
-        & ((df_info["DOSE_LEVEL"]=="High")|(df_info["DOSE_LEVEL"]=="Control"))
-        & (df_info["SACRI_PERIOD"] == time)
-    ]
-    df_info = df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX",]]
-    df_info["COMPOUND_NAME"]=["vehicle" if dose==0 else name for name, dose in zip(df_info["COMPOUND_NAME"], df_info["DOSE"])]
-    df_info=multi_dataframe(df_info, coef=coef)
-    return df_info
+class LoadInfo:
+    def __init__(self):
+        return 
 
-def load_eisai(coef:int=1, conv_name=True, filein=file_eisai_info, time="24 hr"):
-    dict_name={
-        "Corn Oil":"vehicle",
-        "Bromobenzene":"bromobenzene",
-        "CCl4":"carbon tetrachloride",
-        "Naphthyl isothiocyanate":"naphthyl isothiocyanate",
-        "Methylcellulose":"vehicle",
-        "Acetaminophen":"acetaminophen",
-    } # Eisai datasetname → TG-GATE name * vehicle
-    df_info_eisai = pd.read_csv(filein)
-    if conv_name:
-        df_info_eisai["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info_eisai["COMPOUND_NAME"]]
-    df_info_eisai=multi_dataframe(df_info_eisai, coef=coef)
-    df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
-    return df_info_eisai
+    def load(
+        self, 
+        coef:int=1,
+        time="24 hr",
+        conc="High",
+        lst_compounds=list(),
+        conv_name=True,
+        tggate_dataset=False,
+        eisai_dataset=False, 
+        shionogi_dataset=False,
+        rat_dataset=False, 
+        mouse_dataset=False,
+        ):
+        if tggate_dataset:
+            return self.load_tggate(coef=coef, filein=file_tggate_info, time=time, lst_compounds=lst_compounds)
+        if eisai_dataset:
+            return self.load_eisai(coef=coef, filein=file_eisai_info, time=time, conv_name=conv_name)
+        if shionogi_dataset:
+            return self.load_shionogi(coef=coef, filein=file_shionogi_info, time=time, lst_compounds=lst_compounds, unique=True, conc=conc)
+        if rat_dataset:
+            return self.load_rat(coef=coef, filein=file_rat_info, time=time)
+        if mouse_dataset:
+            return self.load_mouse(coef=coef, filein=file_mouse_info, time=time, lst_compounds=lst_compounds)
+        else:
+            print("wrong dataset name")
 
-def load_rat(coef:int=1, filein=file_rat_info, time="24 hr"):
-    dict_name={"control":"vehicle",}
-    df_info=pd.read_csv(filein)
-    df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
-    df_info["INDEX"]=list(range(len(df_info.index)))
-    df_info=df_info[df_info["SACRI_PERIOD"]==time]
-    df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX"]]
-    df_info=multi_dataframe(df_info, coef=coef)
-    return df_info
+    def load_tggate(self, coef:int=1, filein=file_tggate_info, time="24 hr", lst_compounds=list()):
+        df_info =pd.read_csv(filein)
+        df_info["INDEX"]=list(range(df_info.shape[0]))
+        if len(lst_compounds)>0:
+            df_info = df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]
+        df_info = df_info[
+            ((df_info["DOSE_LEVEL"]=="High")|(df_info["DOSE_LEVEL"]=="Control"))
+            & (df_info["SACRI_PERIOD"] == time)
+        ]
+        df_info = df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX",]]
+        df_info["COMPOUND_NAME"]=["vehicle" if dose==0 else name for name, dose in zip(df_info["COMPOUND_NAME"], df_info["DOSE"])]
+        df_info=multi_dataframe(df_info, coef=coef)
+        return df_info
 
-def load_mouse(coef:int=1, filein=file_mouse_info, time="24 hr", lst_compounds=list()):
-    dict_name={
-        "control":"vehicle",
-        "ccl4":"carbon tetrachloride",
-        "1-naphthyl isothiocyanate":"naphthyl isothiocyanate",
-        }
-    df_info=pd.read_csv(filein)
-    df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["compound"]]
-    df_info["INDEX"]=list(range(len(df_info.index)))
-    df_info = df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]
-    df_info=df_info.loc[:,["COMPOUND_NAME", "INDEX"]]
-    df_info=multi_dataframe(df_info, coef=coef)
-    return df_info
+    def load_eisai(self, coef:int=1, conv_name=True, filein=file_eisai_info, time="24 hr"):
+        dict_name={
+            "Corn Oil":"vehicle",
+            "Bromobenzene":"bromobenzene",
+            "CCl4":"carbon tetrachloride",
+            "Naphthyl isothiocyanate":"naphthyl isothiocyanate",
+            "Methylcellulose":"vehicle",
+            "Acetaminophen":"acetaminophen",
+        } # Eisai datasetname → TG-GATE name * vehicle
+        df_info_eisai = pd.read_csv(filein)
+        if conv_name:
+            df_info_eisai["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info_eisai["COMPOUND_NAME"]]
+        df_info_eisai=multi_dataframe(df_info_eisai, coef=coef)
+        df_info_eisai=df_info_eisai.sort_values(by=["COMPOUND_NAME", "INDEX"])
+        return df_info_eisai
+
+    def load_shionogi(self, coef:int=1, filein=file_shionogi_info, time="all", lst_compounds=list(), unique=True, conc="all"):
+        df_info=pd.read_csv(filein)
+        if time!="all":
+            df_info=df_info[df_info["TIME"]==time]
+        if conc!="all":
+            df_info = df_info[
+                ((df_info["CONCENTRATION"]==conc)|(df_info["CONCENTRATION"]=="Control"))
+            ]
+        if unique:
+            df_info=df_info.loc[df_info["SAMPLE"].values,:]
+        df_info=df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]
+        df_info=multi_dataframe(df_info)
+        return df_info
+
+    def load_rat(self, coef:int=1, filein=file_rat_info, time="24 hr"):
+        dict_name={"control":"vehicle",}
+        df_info=pd.read_csv(filein)
+        df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["COMPOUND_NAME"]]
+        df_info["INDEX"]=list(range(len(df_info.index)))
+        df_info=df_info[df_info["SACRI_PERIOD"]==time]
+        df_info=df_info.loc[:,["COMPOUND_NAME", "DOSE", "INDEX"]]
+        df_info=multi_dataframe(df_info, coef=coef)
+        return df_info
+
+    def load_mouse(self, coef:int=1, filein=file_mouse_info, time="24 hr", lst_compounds=list()):
+        dict_name={
+            "control":"vehicle",
+            "ccl4":"carbon tetrachloride",
+            "1-naphthyl isothiocyanate":"naphthyl isothiocyanate",
+            }
+        df_info=pd.read_csv(filein)
+        df_info["COMPOUND_NAME"]=[dict_name.get(i, i) for i in df_info["compound"]]
+        df_info["INDEX"]=list(range(len(df_info.index)))
+        if len(lst_compounds)>0:
+            df_info = df_info[df_info["COMPOUND_NAME"].isin(lst_compounds)]
+        df_info=df_info.loc[:,["COMPOUND_NAME", "INDEX"]]
+        df_info=multi_dataframe(df_info, coef=coef)
+        return df_info
 
 def calc_stats(y_true, y_pred, lst_compounds, le):
     """ Compounds Prediction (multi class, one label) with le and names"""

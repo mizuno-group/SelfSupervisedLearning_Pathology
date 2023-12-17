@@ -76,25 +76,20 @@ class PredictCompExt:
             self.coef=int(2000/size)
         else:
             self.coef=10 # already compressed by size=200
-
         if eisai_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_eisai)
-            self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
             self.lst_target_pred = lst_compounds_target_eisai
         elif rat_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_rat)
-            self.df_info2 = utils.load_rat(coef=self.coef, time=time)
             self.lst_target_pred = lst_compounds_target_rat
         elif mouse_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_mouse)
-            self.df_info2 = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_target_mouse)
-            self.lst_target_pred = lst_compounds_target_mouse
+            self.lst_target_pred = lst_compounds_target_mou
+        self.df_info = utils.load_tggate(
+            coef=self.coef, time=time,
+            lst_compounds=self.lst_target_pred)
+        self.df_info2=utils.LoadInfo().load(
+            coef=self.coef, conv_name=True, time=time,
+            eisai_dataset=eisai_dataset, rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            lst_compounds=self.lst_taret_pred
+        )
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(
@@ -192,23 +187,19 @@ class ClusteringExt:
         else:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_eisai)
-            self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
             self.lst_target_pred = lst_compounds_target_eisai
         elif rat_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_rat)
-            self.df_info2 = utils.load_rat(coef=self.coef, time=time)
             self.lst_target_pred = lst_compounds_target_rat
         elif mouse_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_mouse)
-            self.df_info2 = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_target_mouse)
-            self.lst_target_pred = lst_compounds_target_mouse
+            self.lst_target_pred = lst_compounds_target_mou
+        self.df_info = utils.load_tggate(
+            coef=self.coef, time=time,
+            lst_compounds=self.lst_target_pred)
+        self.df_info2=utils.LoadInfo().load(
+            coef=self.coef, conv_name=True, time=time,
+            eisai_dataset=eisai_dataset, rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            lst_compounds=self.lst_taret_pred
+        )
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(
@@ -248,23 +239,19 @@ class ClusteringExt:
         else:
             self.coef=10 # already compressed by size=200
         if eisai_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_eisai)
-            self.df_info2 = utils.load_eisai(coef=self.coef, conv_name=True)
             self.lst_target_pred = lst_compounds_target_eisai
         elif rat_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_rat)
-            self.df_info2 = utils.load_rat(coef=self.coef, time=time)
             self.lst_target_pred = lst_compounds_target_rat
         elif mouse_dataset:
-            self.df_info = utils.load_tggate(
-                coef=self.coef, time=time,
-                lst_compounds=lst_compounds_target_mouse)
-            self.df_info2 = utils.load_mouse(coef=self.coef, time=time, lst_compounds=lst_compounds_target_mouse)
-            self.lst_target_pred = lst_compounds_target_mouse
+            self.lst_target_pred = lst_compounds_target_mou
+        self.df_info = utils.load_tggate(
+            coef=self.coef, time=time,
+            lst_compounds=self.lst_target_pred)
+        self.df_info2=utils.LoadInfo().load(
+            coef=self.coef, conv_name=True, time=time,
+            eisai_dataset=eisai_dataset, rat_dataset=rat_dataset, mouse_dataset=mouse_dataset,
+            lst_compounds=self.lst_taret_pred
+        )
 
         ## features array
         self.lst_arr_x, self.lst_arr_x2, self.arr_embedding, self.arr_embedding2 = utils.load_array_preprocess_two(

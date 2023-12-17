@@ -49,6 +49,7 @@ parser.add_argument('--dir_result', type=str, help='result')
 parser.add_argument('--mouse_dataset', action='store_true')
 parser.add_argument('--rat_dataset', action='store_true')
 parser.add_argument('--eisai_dataset', action='store_true')
+parser.add_argument('--shionogi_dataset', action='store_true')
 # model/learning settings
 parser.add_argument('--model_name', type=str, default='ResNet18') # model architecture name
 parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
@@ -101,6 +102,8 @@ class Dataset_Batch(torch.utils.data.Dataset):
             filein="/work/gd43/share/Lab/mouse_DILI/batch/batch.npy"
         elif args.eisai_dataset:
             filein="/work/gd43/share/pharm/eisai/batch/batch.npy"
+        elif args.shionogi_dataset:
+            filein="/work/gd43/share/pharm/shionogi/batch/batch.npy"
         with open(filein, 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
