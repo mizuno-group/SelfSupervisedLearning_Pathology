@@ -206,13 +206,9 @@ class PlotPredComp:
             "ssl": [
                 ["BarlowTwins","SimSiam","BYOL","SwAV",],
                 ["", "\nAdd"]],
-            "model": [[
-                "ResNet18",
-                "DenseNet121",
-                "EfficientNetB3",
-                "ConvNetTiny",
-                "RegNetY_1.6GRF",
-                ],["\nPre-trained", "\nBarlowTwins", "\nBarlowTwins_Add"]],
+            "model": [
+                ["ResNet18", "DenseNet121", "EfficientNetB3", "ConvNetTiny", "RegNetY_1.6GRF",],
+                ["\nPre-trained", "\nBarlowTwins", "\nBarlowTwins_Add"]],
             "reduced":[
                 [0, 100, 200, 500, 1000, 2000, 3000, "Full (6058)"],
                 ["", "\nAdd"]],
@@ -293,9 +289,9 @@ class PlotPredComp:
         fulllst=pd.read_pickle(filein.replace("reduced", "model"))
         lst_res=[]
         lst_res+=[lst[i] for i in range(0,8)]
-        lst_res.append(fulllst[1])
+        lst_res.append(fulllst[5])
         lst_res+=[lst[i] for i in range(8,15)]
-        lst_res.append(fulllst[2])
+        lst_res.append(fulllst[10])
         return lst_res
 
     def plot_res(
