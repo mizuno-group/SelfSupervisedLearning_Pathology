@@ -141,39 +141,21 @@ def plot_scatter_confidence(
     plt.show()
 
 def plot_violin(
-    lst_df, 
-    lst_name=["Constant", "Label Prediction", "Pre-Trained", "BarlowTwins"], 
-    target="auroc", 
-    title="title", 
-    label="label", 
-    ylim=[0,1], figsize=(6,6),
-    grid=False,
+    lst_values, 
+    lst_name=list(), 
+    ax=None,
     ):
     # Preprocessing
-    lst_values=[i.loc[:,f"{target}_mean"].values for i in lst_df]
-    lst_mean=[np.mean(i) for i in lst_values]
+    lst_mean=[np.nanmean(i) for i in lst_values]
     df = pd.DataFrame(dict(zip(lst_name, lst_values)))
     df_melt=pd.melt(df)
-    fig = plt.figure(figsize=figsize)
-    # Plot
-    ax=fig.add_subplot(111)
     # violin plot, transparent
-    sns.violinplot(x='variable', y='value', data=df_melt, inner=None, cut=0, scale="count",linewidth=1.5, color="grey")
+    sns.violinplot(x='variable', y='value', data=df_melt, inner=None, cut=0, scale="count",linewidth=1.5, color="dimgrey")
     plt.setp(ax.collections, alpha=.55)
     # average line
     for i, v_mean in enumerate(lst_mean):
         plt.hlines(y=v_mean, xmin=i-.4, xmax=i+.4, linestyle="dotted", color="black", alpha=0.8, linewidth=3)
     sns.stripplot(x='variable', y='value', data=df_melt, jitter=True, linewidth=1.5, size=9, color="firebrick")
-    # set
-    ax.set_title(title,fontsize=16)
-    ax.set_xlabel("Model Name",fontsize=16)
-    ax.set_ylabel(label,fontsize=16)
-    ax.set_xticklabels(lst_name, fontsize=16, rotation=60)
-    if grid:
-        ax.grid(color="#ababab",linewidth=0.5)
-    ax.set_ylim(*ylim)
-    delete_frame()
-    plt.show()
 
 def delete_frame():
     plt.gca().spines['right'].set_visible(False)
@@ -184,6 +166,10 @@ def delete_frame():
 def change_lst_order(lst, lst_order=[]):
     """for ssl comparison"""
     return [lst[i] for i in lst_order]
+
+def set_yticks(ymin=0, ymax=1, intv=.1):
+    n_t=int((ymax-ymin-.0001)//intv)+2
+    return [(ymax*1000-int(i*intv*1000))/1000 for i in reversed(range(n_t))]
 
 class PlotPredComp:
     def __init__(self):
@@ -236,7 +222,7 @@ class PlotPredComp:
             filein=f"{folder}/result/{task}/lowcv_acc_{dataset}.pickle"
         lst_label=[f"{v}{i}" for i in target_dict[task][1] for v in target_dict[task][0]]
         if task=="reduced":
-            lst_res=self.load_fullmodel(filein)
+            lst_res=self._load_fullmodel(filein)
         else:
             lst_res=pd.read_pickle(filein)
         # Plot
@@ -275,7 +261,7 @@ class PlotPredComp:
             lst_color=["dimgrey"]+lst_color
             lst_style=["solid"]+lst_style
             lst_label=["Control"]+lst_label
-        self.plot_res(
+        self._plot_res(
             lst_res, lst_label,
             lst_color=lst_color, lst_style=lst_style,
             figsize=figsize, ylim=ylim, yticks=yticks,
@@ -283,7 +269,7 @@ class PlotPredComp:
             method=method,
             )
 
-    def load_fullmodel(self, filein):
+    def _load_fullmodel(self, filein):
         """load fullmodel result for WSI number study"""
         lst=pd.read_pickle(filein)
         fulllst=pd.read_pickle(filein.replace("reduced", "model"))
@@ -294,7 +280,7 @@ class PlotPredComp:
         lst_res.append(fulllst[10])
         return lst_res
 
-    def plot_res(
+    def _plot_res(
         self, 
         lst_res, lst_label, 
         lst_color=list(), lst_style=list(),
@@ -325,4 +311,72 @@ class PlotPredComp:
         delete_frame()
         plt.title(title)
         plt.tight_layout()
+        plt.show()
+
+class PlotPredFold:
+    def __init__(self):
+        return
+
+    def plot_result(
+        self,
+        target="AUROC", ylabel="AUROC", # AUROC, AUPR, mAP, ...
+        task="prognosis",
+        lst_filein=list(),
+        lst_name=list(),
+        figsize=(9,5.5),
+        ylim=[0,1], yticks=None, intv=.05,
+        rotation=60,
+        ):
+        # Set Title
+        dict_task={
+            "prognosis":["Prognosis Prediction",],
+            "finding":["Finding Classification",],
+            "moa":["MoA Classification",],
+            "compound_name":["Compound Name Classification",],
+        }
+        title=dict_task[task][0]
+        # Load
+        lst_lst_res=[self._calc_mean(pd.read_pickle(filein), target=target) for filein in lst_filein]
+        # Plot
+        self._plot_res(
+            lst_lst_res, lst_name=lst_name,
+            title=title, ylabel=ylabel,
+            figsize=figsize, ylim=ylim, yticks=yticks, intv=intv,
+            grid=False, rotation=rotation)
+
+    def _calc_mean(self, lst_res, target:str=""):
+        df_temp = pd.concat([df.loc[:,f"{target}"] for df in lst_res], axis=1)
+        return df_temp.mean(axis=1, skipna=True).values
+
+    def _plot_res(
+        self,    
+        lst_values, 
+        lst_name=list(), 
+        title="title", 
+        ylabel="label", 
+        figsize=(6,6),
+        ylim=[0,1], yticks=list(), intv=.05,
+        grid=False, rotation=60):
+        # Plot
+        fig = plt.figure(figsize=figsize)
+        ax=fig.add_subplot(111)
+        plot_violin(
+            lst_values,
+            lst_name=lst_name, 
+            ax=ax,)
+        # set
+        if ylim:
+            ax.set_ylim(*ylim)
+            if not yticks:
+                yticks=set_yticks(ymin=ylim[0], ymax=1, intv=intv)
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(yticks)
+        ax.set_xticks(range(len(lst_name)))
+        ax.set_xticklabels(lst_name, rotation=rotation)
+        ax.set_title(title)
+        ax.set_xlabel("Model Name")
+        ax.set_ylabel(ylabel)
+        if grid:
+            ax.grid(color="#ababab",linewidth=0.5)
+        delete_frame()
         plt.show()
