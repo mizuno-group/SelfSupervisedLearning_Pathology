@@ -319,7 +319,7 @@ class PlotPredFold:
 
     def plot_result(
         self,
-        target="AUROC", ylabel="AUROC", # AUROC, AUPR, mAP, ...
+        target="AUROC", ylabel="AUROC", eval_method="macro",# AUROC, AUPR, mAP, ...
         task="prognosis",
         lst_filein=list(),
         lst_name=list(),
@@ -334,9 +334,25 @@ class PlotPredFold:
             "moa":["MoA Classification",],
             "compound_name":["Compound Name Classification",],
         }
+        dict_position={
+            "Accuracy":1,
+            "AUROC":3,
+            "AUPR":4,
+            "Balanced Accuracy":2,
+        }
         title=dict_task[task][0]
         # Load
-        lst_lst_res=[self._calc_mean(pd.read_pickle(filein), target=target) for filein in lst_filein]
+        lst_lst_res=[pd.read_pickle(filein) for filein in lst_filein]
+        if task=="moa" or task=="compound_name":
+            if eval_method=="macro":
+                # evaluate (one indicator for one sample, average across fold)
+                lst_lst_res=[[v[0] for v in i] for i in lst_lst_res]
+            elif eval_method=="micro":
+                # evaluate (one indicator for one fold)
+                lst_lst_res=[[v[dict_position[target]] for v in i] for i in lst_lst_res]
+        else:
+            lst_lst_res=[self._calc_mean(i, target=target) for i in lst_lst_res]
+
         # Plot
         self._plot_res(
             lst_lst_res, lst_name=lst_name,
