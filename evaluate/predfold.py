@@ -14,97 +14,18 @@ from sklearn.linear_model import LogisticRegression, ElasticNet
 from sklearn.svm import SVR
 import lightgbm as lgb
 
-from evaluate import utils
+from evaluate import utils, settings
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
 
-lst_classification=[
-    'Degeneration, hydropic',
-    'Degeneration, fatty',
-    'Change, acidophilic',
-    'Ground glass appearance',
-    'Proliferation, oval cell',
-    'Single cell necrosis',
-    'Degeneration, granular, eosinophilic',
-    'Swelling',
-    'Increased mitosis',
-    'Alteration, nuclear',
-    'Change, basophilic',
-    'Hypertrophy',
-    'Necrosis',
-    'Inclusion body, intracytoplasmic',
-    'Proliferation, Kupffer cell',
-    'Change, eosinophilic',
-    'Proliferation, bile duct',
-    'Microgranuloma',
-    'Alteration, cytoplasmic',
-    'Deposit, glycogen',
-    'Hematopoiesis, extramedullary',
-    'Fibrosis',
-    'Cellular infiltration',
-    'Vacuolization, cytoplasmic'
-]
-lst_prognosis=[
-    'Granuloma',
-    'Change, acidophilic',
-    'Ground glass appearance',
-    'Proliferation, oval cell',
-    'Single cell necrosis',
-    'Degeneration, granular, eosinophilic',
-    'Swelling',
-    'Cellular foci',
-    'Increased mitosis',
-    'Hypertrophy',
-    'Necrosis',
-    'Inclusion body, intracytoplasmic',
-    'Deposit, pigment',
-    'Proliferation, Kupffer cell',
-    'Change, eosinophilic',
-    'Proliferation, bile duct',
-    'Microgranuloma',
-    'Anisonucleosis',
-    'Deposit, glycogen',
-    'Hematopoiesis, extramedullary',
-    'Fibrosis',
-    'Cellular infiltration',
-    'Vacuolization, cytoplasmic'
-]
-lst_compounds=[
-    'erythromycin ethylsuccinate',
-    'fenofibrate',
-    'chlorpromazine',
-    'cimetidine',
-    'thioridazine',
-    'haloperidol',
-    'acetaminophen',
-    'ranitidine',
-    'chlorpropamide',
-    'clofibrate',
-    'diclofenac',
-    'sulindac',
-    'sulfasalazine',
-    'tetracycline',
-    'carboplatin',
-    'azathioprine',
-    'phenylbutazone',
-    'tolbutamide',
-    'nitrofurantoin',
-    'famotidine',
-    'gemfibrozil',
-    'mefenamic acid',
-    'chloramphenicol',
-    'glibenclamide',
-    'aspirin',
-    'nitrofurazone',
-    'naproxen',
-    'cyclophosphamide',
-    'lomustine',
-]
-file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
-file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
-file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding.csv"
-file_moa="/workspace/230310_TGGATE_liver/data/processed/moa.csv"
+lst_classification=settings.lst_classification
+lst_prognosis=settings.lst_prognosis
+lst_compounds=settings.lst_compounds
+file_all=settings.file_all
+file_classification=settings.file_classification
+file_prognosis=settings.file_prognosis
+file_moa=settings.file_moa
 
 class ClassificationFold:
     def __init__(self):
@@ -262,7 +183,7 @@ class ClassificationFold:
         filein=file_all,
         fold:int=0, 
         convertz=False,
-        compression=False, n_components=16,
+        compression=False, n_components=128,
         prognosis=False,
         ):
         ###finding label###

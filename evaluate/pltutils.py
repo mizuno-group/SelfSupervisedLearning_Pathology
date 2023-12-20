@@ -319,8 +319,9 @@ class PlotPredFold:
 
     def plot_result(
         self,
-        target="AUROC", ylabel="AUROC", eval_method="macro",# AUROC, AUPR, mAP, ...
         task="prognosis",
+        target="AUROC", ylabel="AUROC", # AUROC, AUPR, mAP, ...
+        eval_method="macro", # For moa/compound_name task
         lst_filein=list(),
         lst_name=list(),
         figsize=(9,5.5),
