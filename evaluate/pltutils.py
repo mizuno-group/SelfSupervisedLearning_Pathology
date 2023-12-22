@@ -186,8 +186,10 @@ class PlotPredComp:
         order=True,
         figsize=(9,5.5),
         ylim=[],
+        xticks=None,
         yticks=None,
-        method="strip"
+        method="strip",
+        ax=None
         ):
         # Names
         target_dict={
@@ -263,12 +265,21 @@ class PlotPredComp:
             lst_color=["dimgrey"]+lst_color
             lst_style=["solid"]+lst_style
             lst_label=["Control"]+lst_label
-        self._plot_res(
-            lst_res, lst_label,
-            lst_color=lst_color, lst_style=lst_style,
-            figsize=figsize, ylim=ylim, yticks=yticks,
-            title=title, ylabel=ylabel, 
-            method=method,
+        if ax:
+            self._plot_res_ax(
+                lst_res, lst_label,
+                lst_color=lst_color, lst_style=lst_style,
+                ylim=ylim, yticks=yticks, xticks=xticks,
+                title=title, ylabel=ylabel, 
+                method=method, ax=ax
+            )
+        else:
+            self._plot_res(
+                lst_res, lst_label,
+                lst_color=lst_color, lst_style=lst_style,
+                figsize=figsize, ylim=ylim, yticks=yticks,
+                title=title, ylabel=ylabel, 
+                method=method,
             )
 
     def _load_fullmodel(self, filein):
@@ -314,6 +325,36 @@ class PlotPredComp:
         plt.title(title)
         plt.tight_layout()
         plt.show()
+
+    def _plot_res_ax(
+        self,
+        lst_res, lst_label, 
+        lst_color=list(), lst_style=list(),
+        ylim=list(), yticks=None, xticks=True,
+        title="", ylabel="", method="strip", ax=None,
+        ):
+        methods_dict={
+            "strip":plot_stripplot,
+            "scatter_circle":plot_scatter_circle,
+        }
+        methods_dict[method](
+            lst_res, lst_color=lst_color, lst_style=lst_style, ax=ax,
+        )
+        if ylim:
+            ax.set_ylim(*ylim)
+        if yticks:
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(yticks)
+        ax.set_ylabel(ylabel)
+        ax.set_xlim(-1,len(lst_res))
+        if xticks:
+            ax.set_xticks(range(len(lst_res)))
+            ax.set_xticklabels(
+                lst_label,
+                rotation=90)
+        delete_frame()
+        ax.set_title(title)
+        return ax  
 
 class PlotPredFold:
     def __init__(self):
