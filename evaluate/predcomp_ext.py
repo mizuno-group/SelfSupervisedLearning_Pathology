@@ -67,7 +67,7 @@ class PredictCompExt:
         params_lr=dict(),
         plot_heat=False,
         eisai_dataset=False, rat_dataset=False, mouse_dataset=False,
-        time="24 hr"
+        time="24 hr",
         ):
         """ evaluate compound prediction """
         # data load
@@ -81,7 +81,7 @@ class PredictCompExt:
         elif rat_dataset:
             self.lst_target_pred = lst_compounds_target_rat
         elif mouse_dataset:
-            self.lst_target_pred = lst_compounds_target_mou
+            self.lst_target_pred = lst_compounds_target_mouse
         self.df_info = utils.load_tggate(
             coef=self.coef, time=time,
             lst_compounds=self.lst_target_pred)

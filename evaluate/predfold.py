@@ -22,6 +22,7 @@ plt.rcParams["font.size"] = 14
 lst_classification=settings.lst_classification
 lst_prognosis=settings.lst_prognosis
 lst_compounds=settings.lst_compounds
+lst_moa=settings.lst_moa
 file_all=settings.file_all
 file_classification=settings.file_classification
 file_prognosis=settings.file_prognosis
@@ -55,13 +56,16 @@ class ClassificationFold:
         if prognosis:
             self._load_prognosis(lst_features=lst_features)
         if moa:
-            self._load_moa()
+            pass # load for each fold
+
         if compound_name:
             pass # load for each fold
 
         # Predict / Evaluate
         lst_res=[]
         for fold in range(5):
+            if moa:
+                self._load_moa(fold=fold)
             if compound_name:
                 self._load_compound_name(fold=fold)
             if finding_base:
@@ -141,6 +145,7 @@ class ClassificationFold:
 
     def _load_moa(
         self,
+        fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
         ):
@@ -148,9 +153,12 @@ class ClassificationFold:
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
         moa_df = pd.read_csv(filein_moa).rename(columns={"Unnamed: 0":"COMPOUND_NAME"})
-        moa_df["MoA"] = np.argmax(moa_df[moa_df.columns[1:]].values,axis=1)
         df_info = pd.merge(df_info, moa_df, on = "COMPOUND_NAME")
         df_info = df_info[df_info["SACRI_PERIOD"].isin(["4 day", "8 day", "15 day", "29 day"]) & (df_info["DOSE"]>0)]
+        # drop moa not existing moa in fold
+        lst_tf=(df_info.loc[df_info["FOLD"]==fold,lst_moa].sum()!=0).tolist()
+        lst_moa_fold=[lst_moa[v] for v, i in enumerate(lst_tf) if i]
+        df_info["MoA"] = np.argmax(df_info.loc[:,lst_moa_fold].values,axis=1)
         # set
         self.df_info = df_info.loc[:,["MoA","FOLD","INDEX"]]
         self.lst_features="MoA"
@@ -168,7 +176,7 @@ class ClassificationFold:
         moa_df["MoA"] = np.argmax(moa_df[moa_df.columns[1:]].values,axis=1)
         df_info = pd.merge(df_info, moa_df, on = "COMPOUND_NAME")
         df_info = df_info[df_info["SACRI_PERIOD"].isin(["4 day", "8 day", "15 day", "29 day"]) & (df_info["DOSE"]>0)]
-        # drop not existing compounds in fold
+        # drop samples not existing compounds in fold
         lst_tf=(df_info.loc[df_info["FOLD"]==fold,lst_compounds].sum()!=0).tolist()
         lst_compounds_fold=[lst_compounds[v] for v, i in enumerate(lst_tf) if i]
         df_info=df_info[df_info["COMPOUND_NAME"].isin(lst_compounds_fold)]

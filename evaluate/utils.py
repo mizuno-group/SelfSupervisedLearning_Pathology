@@ -82,7 +82,7 @@ def load_array_fold(
     compression=False, n_components=2, 
     ):
     if pretrained:
-        arr_x=np.load(f"{folder}/{name}{layer}.npy")
+        arr_x=np.load(f"{folder}/pretrained_{name}{layer}.npy")
     else:
         arr_x=np.load(f"{folder}/fold{fold}_{name}{layer}.npy")
     ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()

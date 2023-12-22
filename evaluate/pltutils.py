@@ -169,7 +169,9 @@ def change_lst_order(lst, lst_order=[]):
 
 def set_yticks(ymin=0, ymax=1, intv=.1):
     n_t=int((ymax-ymin-.0001)//intv)+2
-    return [(ymax*1000-int(i*intv*1000))/1000 for i in reversed(range(n_t))]
+    yticks=[(ymax*1000-int(i*intv*1000))/1000 for i in reversed(range(n_t))]
+    yticks=[i for i in yticks if i>=0]
+    return yticks
 
 class PlotPredComp:
     def __init__(self):
@@ -217,7 +219,7 @@ class PlotPredComp:
             else:
                 filein=f"{folder}/result/{task}/pf_{dataset}.pickle"
         else:
-            title=f"Leave One WSI Out Cross Validation ({dataset_dict[dataset]} Dataset)"
+            title=f"Compound Name Classification ({dataset_dict[dataset]} Dataset)"
             ylabel="Accuracy"
             filein=f"{folder}/result/{task}/lowcv_acc_{dataset}.pickle"
         lst_label=[f"{v}{i}" for i in target_dict[task][1] for v in target_dict[task][0]]

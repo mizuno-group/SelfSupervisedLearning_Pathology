@@ -85,8 +85,14 @@ if liver:
         'nitrofurazone',
         'naproxen',
         'cyclophosphamide',
-        'lomustine',
-    ]
+        'lomustine',]
+    lst_moa=[
+        'DNA inhibitor',
+        'Sulfonylurea receptor 1, Kir6.2 blocker',
+        'Histamine H2 receptor antagonist',
+        'Serotonin 2a (5-HT2a) receptor antagonist',
+        'Peroxisome proliferator-activated receptor alpha agonist',
+        'Cyclooxygenase inhibitor', 'Bacterial 70S ribosome inhibitor']
     # file names
     file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
     file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
@@ -158,6 +164,12 @@ if kidney:
         'sulindac',
         'diclofenac',
         'aspirin']
+    lst_moa=[
+        'Peroxisome proliferator-activated receptor alpha agonist',
+        'Cyclooxygenase inhibitor', 'Bacterial 70S ribosome inhibitor',
+        'Histamine H2 receptor antagonist',
+        'Sulfonylurea receptor 1, Kir6.2 blocker', 'DNA inhibitor',
+        'Serotonin 2a (5-HT2a) receptor antagonist']
     # file names
     file_all="/workspace/230116_TGGATE_kidney/data/processed/info_fold.csv"
     file_classification="/workspace/230116_TGGATE_kidney/data/classification/finding.csv"
