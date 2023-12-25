@@ -35,7 +35,7 @@ from torch.utils.data import Dataset
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
-import tggate.sslutils as sslutils
+import sslmodel.sslutils as sslutils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')
@@ -231,7 +231,7 @@ def train_epoch(model, criterion, optimizer, epoch):
     if args.resize:
         minibatch_lst=[0]
     else:
-        minibatch_lst=list(range(26))
+        minibatch_lst=list(range(21))
     random.seed(args.seed+epoch)
     random.shuffle(minibatch_lst)
     random.seed(args.seed)

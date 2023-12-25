@@ -147,6 +147,9 @@ def plot_violin(
     ):
     # Preprocessing
     lst_mean=[np.nanmean(i) for i in lst_values]
+    # fill small data list with na
+    v_max=max([len(i) for i in lst_values])
+    lst_values=[i+[np.nan]*(v_max-len(i)) for i in lst_values]
     df = pd.DataFrame(dict(zip(lst_name, lst_values)))
     df_melt=pd.melt(df)
     # violin plot, transparent
@@ -404,9 +407,27 @@ class PlotPredFold:
             figsize=figsize, ylim=ylim, yticks=yticks, intv=intv,
             grid=False, rotation=rotation)
 
+    def plot_result_pf(
+        self,
+        lst_filein=list(),
+        lst_name=list(),
+        title="Clustering Separation (MoA)",
+        figsize=(9,5.5),
+        rotation=90,
+        ):
+        # Load
+        lst_res=[pd.read_pickle(filein) for filein in lst_filein]
+        lst_res=[[v for i in lst_res for v in i[1]]]+[i[0] for i in lst_res] # [Control] + [Results]
+        # Plot
+        self._plot_res(
+            lst_res, lst_name=lst_name,
+            title=title, ylabel="Pseudo F Score",
+            figsize=figsize, ylim=None,
+            grid=False, rotation=rotation)
+
     def _calc_mean(self, lst_res, target:str=""):
         df_temp = pd.concat([df.loc[:,f"{target}"] for df in lst_res], axis=1)
-        return df_temp.mean(axis=1, skipna=True).values
+        return df_temp.mean(axis=1, skipna=True).tolist()
 
     def _plot_res(
         self,    

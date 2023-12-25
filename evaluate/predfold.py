@@ -43,7 +43,7 @@ class ClassificationFold:
         pred_method="logistic_regression", params=dict(),
         finding=False, prognosis=False, #prediction mode/multi label
         moa=False, compound_name=False, #prediction mode/multi class
-        lst_features=list(),
+        lst_features=None,
         finding_base=False,
         ):
         # set
@@ -57,7 +57,6 @@ class ClassificationFold:
             self._load_prognosis(lst_features=lst_features)
         if moa:
             pass # load for each fold
-
         if compound_name:
             pass # load for each fold
 
@@ -65,14 +64,14 @@ class ClassificationFold:
         lst_res=[]
         for fold in range(5):
             if moa:
-                self._load_moa(fold=fold)
+                self._load_moa(fold=fold, lst_features=lst_features)
             if compound_name:
-                self._load_compound_name(fold=fold)
+                self._load_compound_name(fold=fold, lst_features=lst_features)
             if finding_base:
                 arr_x_train, arr_x_test = self._load_labels(
                     self.df_info, fold=fold, convertz=convertz,
                     compression=compression, n_components=n_components,
-                    prognosis=prognosis
+                    prognosis=prognosis, constant=(pred_method=="constant"),
                 )
             else:
                 arr_x_train, arr_x_test = utils.load_array_fold(
@@ -125,7 +124,7 @@ class ClassificationFold:
     def _load_classification(
         self,
         filein=file_classification, 
-        lst_features=list()):
+        lst_features=None):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
         if lst_features:
@@ -136,7 +135,7 @@ class ClassificationFold:
     def _load_prognosis(
         self,
         filein=file_prognosis, 
-        lst_features=list()):
+        lst_features=None):
         self.df_info=pd.read_csv(filein)
         if lst_features:
             self.lst_features=lst_features
@@ -148,7 +147,10 @@ class ClassificationFold:
         fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
+        lst_features=None,
         ):
+        if lst_features:
+            lst_moa=lst_features
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
@@ -168,7 +170,10 @@ class ClassificationFold:
         fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
+        lst_features=None,
         ):
+        if lst_features:
+            lst_compounds=lst_features
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
@@ -192,12 +197,15 @@ class ClassificationFold:
         fold:int=0, 
         convertz=False,
         compression=False, n_components=128,
-        prognosis=False,
+        prognosis=False, constant=False,
         ):
         ###finding label###
         df=pd.read_csv(filein)
         if prognosis:
-            arr_x=df.loc[:,self.lst_features].values
+            if constant:
+                arr_x=df.loc[:,self.lst_features].values
+            else:
+                arr_x=df.loc[:,lst_prognosis].values
         else:
             arr_x=df.loc[:,lst_classification].values
         ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()

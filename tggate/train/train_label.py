@@ -19,8 +19,6 @@ import random
 import numpy as np
 import pandas as pd
 from tqdm import tqdm, trange
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import accuracy_score
 
 import torch
 import torch.nn as nn
@@ -35,7 +33,7 @@ from torch.utils.data import Dataset
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
-import tggate.sslutils as sslutils
+import sslmodel.sslutils as sslutils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')

@@ -36,7 +36,7 @@ from timm.scheduler import CosineLRScheduler
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
-import tggate.sslutils as sslutils
+import sslmodel.sslutils as sslutils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')

@@ -1,6 +1,6 @@
 # settings
-liver=False
-kidney=True
+liver=True
+kidney=False
 
 # 
 if liver:
@@ -94,9 +94,9 @@ if liver:
         'Peroxisome proliferator-activated receptor alpha agonist',
         'Cyclooxygenase inhibitor', 'Bacterial 70S ribosome inhibitor']
     # file names
-    file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
-    file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
-    file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding.csv"
+    file_all="/workspace/230310_TGGATE_liver/result/info_fold_layer.csv"
+    file_classification="/workspace/230310_TGGATE_liver/data/classification/finding_layer.csv"
+    file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding_layer.csv"
     file_moa="/workspace/230310_TGGATE_liver/data/processed/moa.csv"
 
 if kidney:
