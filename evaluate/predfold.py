@@ -14,97 +14,19 @@ from sklearn.linear_model import LogisticRegression, ElasticNet
 from sklearn.svm import SVR
 import lightgbm as lgb
 
-from evaluate import utils
+from evaluate import utils, settings
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
 
-lst_classification=[
-    'Degeneration, hydropic',
-    'Degeneration, fatty',
-    'Change, acidophilic',
-    'Ground glass appearance',
-    'Proliferation, oval cell',
-    'Single cell necrosis',
-    'Degeneration, granular, eosinophilic',
-    'Swelling',
-    'Increased mitosis',
-    'Alteration, nuclear',
-    'Change, basophilic',
-    'Hypertrophy',
-    'Necrosis',
-    'Inclusion body, intracytoplasmic',
-    'Proliferation, Kupffer cell',
-    'Change, eosinophilic',
-    'Proliferation, bile duct',
-    'Microgranuloma',
-    'Alteration, cytoplasmic',
-    'Deposit, glycogen',
-    'Hematopoiesis, extramedullary',
-    'Fibrosis',
-    'Cellular infiltration',
-    'Vacuolization, cytoplasmic'
-]
-lst_prognosis=[
-    'Granuloma',
-    'Change, acidophilic',
-    'Ground glass appearance',
-    'Proliferation, oval cell',
-    'Single cell necrosis',
-    'Degeneration, granular, eosinophilic',
-    'Swelling',
-    'Cellular foci',
-    'Increased mitosis',
-    'Hypertrophy',
-    'Necrosis',
-    'Inclusion body, intracytoplasmic',
-    'Deposit, pigment',
-    'Proliferation, Kupffer cell',
-    'Change, eosinophilic',
-    'Proliferation, bile duct',
-    'Microgranuloma',
-    'Anisonucleosis',
-    'Deposit, glycogen',
-    'Hematopoiesis, extramedullary',
-    'Fibrosis',
-    'Cellular infiltration',
-    'Vacuolization, cytoplasmic'
-]
-lst_compounds=[
-    'erythromycin ethylsuccinate',
-    'fenofibrate',
-    'chlorpromazine',
-    'cimetidine',
-    'thioridazine',
-    'haloperidol',
-    'acetaminophen',
-    'ranitidine',
-    'chlorpropamide',
-    'clofibrate',
-    'diclofenac',
-    'sulindac',
-    'sulfasalazine',
-    'tetracycline',
-    'carboplatin',
-    'azathioprine',
-    'phenylbutazone',
-    'tolbutamide',
-    'nitrofurantoin',
-    'famotidine',
-    'gemfibrozil',
-    'mefenamic acid',
-    'chloramphenicol',
-    'glibenclamide',
-    'aspirin',
-    'nitrofurazone',
-    'naproxen',
-    'cyclophosphamide',
-    'lomustine',
-]
-file_all="/workspace/230310_TGGATE_liver/result/info_fold.csv"
-file_classification="/workspace/230310_TGGATE_liver/data/classification/finding.csv"
-file_prognosis="/workspace/230310_TGGATE_liver/data/prognosis/finding.csv"
-file_moa="/workspace/230310_TGGATE_liver/data/processed/moa.csv"
+lst_classification=settings.lst_classification
+lst_prognosis=settings.lst_prognosis
+lst_compounds=settings.lst_compounds
+lst_moa=settings.lst_moa
+file_all=settings.file_all
+file_classification=settings.file_classification
+file_prognosis=settings.file_prognosis
+file_moa=settings.file_moa
 
 class ClassificationFold:
     def __init__(self):
@@ -121,7 +43,7 @@ class ClassificationFold:
         pred_method="logistic_regression", params=dict(),
         finding=False, prognosis=False, #prediction mode/multi label
         moa=False, compound_name=False, #prediction mode/multi class
-        lst_features=list(),
+        lst_features=None,
         finding_base=False,
         ):
         # set
@@ -134,20 +56,22 @@ class ClassificationFold:
         if prognosis:
             self._load_prognosis(lst_features=lst_features)
         if moa:
-            self._load_moa()
+            pass # load for each fold
         if compound_name:
             pass # load for each fold
 
         # Predict / Evaluate
         lst_res=[]
         for fold in range(5):
+            if moa:
+                self._load_moa(fold=fold, lst_features=lst_features)
             if compound_name:
-                self._load_compound_name(fold=fold)
+                self._load_compound_name(fold=fold, lst_features=lst_features)
             if finding_base:
                 arr_x_train, arr_x_test = self._load_labels(
                     self.df_info, fold=fold, convertz=convertz,
                     compression=compression, n_components=n_components,
-                    prognosis=prognosis
+                    prognosis=prognosis, constant=(pred_method=="constant"),
                 )
             else:
                 arr_x_train, arr_x_test = utils.load_array_fold(
@@ -200,7 +124,7 @@ class ClassificationFold:
     def _load_classification(
         self,
         filein=file_classification, 
-        lst_features=list()):
+        lst_features=None):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
         if lst_features:
@@ -211,7 +135,7 @@ class ClassificationFold:
     def _load_prognosis(
         self,
         filein=file_prognosis, 
-        lst_features=list()):
+        lst_features=None):
         self.df_info=pd.read_csv(filein)
         if lst_features:
             self.lst_features=lst_features
@@ -220,16 +144,23 @@ class ClassificationFold:
 
     def _load_moa(
         self,
+        fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
+        lst_features=None,
         ):
+        if lst_features:
+            lst_moa=lst_features
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
         moa_df = pd.read_csv(filein_moa).rename(columns={"Unnamed: 0":"COMPOUND_NAME"})
-        moa_df["MoA"] = np.argmax(moa_df[moa_df.columns[1:]].values,axis=1)
         df_info = pd.merge(df_info, moa_df, on = "COMPOUND_NAME")
         df_info = df_info[df_info["SACRI_PERIOD"].isin(["4 day", "8 day", "15 day", "29 day"]) & (df_info["DOSE"]>0)]
+        # drop moa not existing moa in fold
+        lst_tf=(df_info.loc[df_info["FOLD"]==fold,lst_moa].sum()!=0).tolist()
+        lst_moa_fold=[lst_moa[v] for v, i in enumerate(lst_tf) if i]
+        df_info["MoA"] = np.argmax(df_info.loc[:,lst_moa_fold].values,axis=1)
         # set
         self.df_info = df_info.loc[:,["MoA","FOLD","INDEX"]]
         self.lst_features="MoA"
@@ -239,7 +170,10 @@ class ClassificationFold:
         fold:int=None,
         filein_all=file_all,
         filein_moa=file_moa,
+        lst_features=None,
         ):
+        if lst_features:
+            lst_compounds=lst_features
         # load metadata
         df_info = pd.read_csv(filein_all)
         df_info["INDEX"]=list(range(df_info.shape[0]))
@@ -247,7 +181,7 @@ class ClassificationFold:
         moa_df["MoA"] = np.argmax(moa_df[moa_df.columns[1:]].values,axis=1)
         df_info = pd.merge(df_info, moa_df, on = "COMPOUND_NAME")
         df_info = df_info[df_info["SACRI_PERIOD"].isin(["4 day", "8 day", "15 day", "29 day"]) & (df_info["DOSE"]>0)]
-        # drop not existing compounds in fold
+        # drop samples not existing compounds in fold
         lst_tf=(df_info.loc[df_info["FOLD"]==fold,lst_compounds].sum()!=0).tolist()
         lst_compounds_fold=[lst_compounds[v] for v, i in enumerate(lst_tf) if i]
         df_info=df_info[df_info["COMPOUND_NAME"].isin(lst_compounds_fold)]
@@ -262,13 +196,16 @@ class ClassificationFold:
         filein=file_all,
         fold:int=0, 
         convertz=False,
-        compression=False, n_components=16,
-        prognosis=False,
+        compression=False, n_components=128,
+        prognosis=False, constant=False,
         ):
         ###finding label###
         df=pd.read_csv(filein)
         if prognosis:
-            arr_x=df.loc[:,self.lst_features].values
+            if constant:
+                arr_x=df.loc[:,self.lst_features].values
+            else:
+                arr_x=df.loc[:,lst_prognosis].values
         else:
             arr_x=df.loc[:,lst_classification].values
         ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()

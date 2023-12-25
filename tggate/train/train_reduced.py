@@ -35,7 +35,7 @@ from torch.utils.data import Dataset
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
-import tggate.sslutils as sslutils
+import sslmodel.sslutils as sslutils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')
@@ -325,7 +325,6 @@ def main(resume=False):
             None,
             DIR_NAME, lst_name=['summary_ssl.txt', 'model_ssl.pt']
         )
-        
         LOGGER.to_logger(name='argument', obj=args)
         LOGGER.to_logger(name='loss', obj=criterion)
         LOGGER.to_logger(
