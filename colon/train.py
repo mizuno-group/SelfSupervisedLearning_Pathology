@@ -56,7 +56,7 @@ parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl archite
 parser.add_argument('--num_epoch_ssl', type=int, default=50) # epoch
 parser.add_argument('--batch_size_ssl', type=int, default=64) # batch size ssl
 parser.add_argument('--lr_ssl', type=float, default=0.003) # learning rate for ssl
-parser.add_argument('--patience_ssl', type=int, default=3) # early stopping for ssl
+parser.add_argument('--patience_ssl', type=int, default=5) # early stopping for ssl
 parser.add_argument('--delta_ssl', type=float, default=0.0) # early stopping for ssl
 # linear
 parser.add_argument('--num_epoch', type=int, default=150) # epoch
@@ -219,8 +219,14 @@ def prepare_model(model, model_name="", patience:int=7, delta:float=0, lr:float=
             num_classes=num_classes, 
             dim=DICT_MODEL[model_name][1]) 
     else:
+        if args.ssl_name=="simsiam" :
+            backbone=model.encoder
+        elif args.ssl_name=="barlowtwins" or args.ssl_name=="swav":
+            backbone=model.backbone
+        elif args.ssl_name=="byol":
+            backbone=model.net
         model_all = LinearHead(
-            model.backbone, 
+            backbone, 
             num_classes=num_classes, 
             dim=DICT_MODEL[model_name][1]) 
     model_all = utils.fix_params(model_all, forall=False)
@@ -372,8 +378,8 @@ def predict(model, dataloader):
             y_pred = torch.cat((y_pred, output), 0)
         y_true = y_true.detach().cpu().numpy()
         y_pred = y_pred.detach().cpu().numpy()
-        df_res, acc, ba, auroc, mAP=evaluate(y_true.flatten().astype(int), y_pred)
-    return df_res, acc, ba, auroc, mAP
+        df_res, acc, ba, auroc=evaluate(y_true.flatten().astype(int), y_pred)
+    return df_res, acc, ba, auroc
 
 def evaluate(y_true, y_pred):
     """
@@ -404,8 +410,7 @@ def evaluate(y_true, y_pred):
     acc = np.mean(np.argmax(y_pred, axis=1) == y_true)
     ba = metrics.balanced_accuracy_score(y_true, np.argmax(y_pred, axis=1))
     auroc = metrics.roc_auc_score(y_true, y_pred, average="micro", multi_class="ovr")
-    mAP = metrics.average_precision_score(y_true, y_pred, average="micro")
-    return df_res, acc, ba, auroc, mAP
+    return df_res, acc, ba, auroc
 
 def main():
     # 1. Self-Supervised Training
