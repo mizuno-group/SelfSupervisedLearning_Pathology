@@ -17,8 +17,8 @@ class BarlowTwins:
     def __init__(self, DEVICE="cpu"):
         self.DEVICE=DEVICE
 
-    def prepare_model(self, backbone, head_size:int=512):
-        model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
+    def prepare_model(self, backbone, head_size:int=512, pred_dim=128, projection_dim=512):
+        model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, projection_dim, pred_dim])
         criterion = barlowtwins.BarlowTwinsLoss()
         model.to(self.DEVICE)
         return model, criterion
@@ -38,8 +38,8 @@ class BarlowTwins:
             )
         return train_transform
 
-    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
-        model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, 512, 128])
+    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, pred_dim=128, projection_dim=512):
+        model = barlowtwins.BarlowTwins(backbone, head_size=[head_size, projection_dim, pred_dim])
         model.load_state_dict(torch.load(model_path))
         model = model.backbone
         model.to(self.DEVICE)
@@ -55,14 +55,14 @@ class Byol:
     def __init__(self, DEVICE="cpu"):
         self.DEVICE=DEVICE
 
-    def prepare_model(self, backbone, head_size:int=512):
+    def prepare_model(self, backbone, head_size:int=512, projection_hidden_size:int=2048):
         """return ssl model"""
         model = byol.BYOL(
             backbone, 
             image_size=224, 
             hidden_layer=-1, 
             projection_size = 256, 
-            projection_hidden_size = 512, 
+            projection_hidden_size = projection_hidden_size, 
             moving_average_decay = 0.99,
             DEVICE=self.DEVICE,
             )
@@ -85,12 +85,12 @@ class Byol:
             )
         return train_transform
 
-    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
+    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, projection_hidden_size:int=4096):
         """return backbone model"""
         model = byol.BYOL(
             backbone, image_size=224, 
             hidden_layer=-1, 
-            projection_size = 256, projection_hidden_size = 512,
+            projection_size = 256, projection_hidden_size = projection_hidden_size,
             moving_average_decay = 0.99,
             DEVICE=self.DEVICE,
             )
@@ -157,13 +157,13 @@ class SimSiam:
     def __init__(self, DEVICE="cpu"):
         self.DEVICE=DEVICE
 
-    def prepare_model(self, backbone, head_size:int=512):
+    def prepare_model(self, backbone, head_size:int=512, dim=2048, pred_dim=512,):
         """return ssl model"""
         model= simsiam.SimSiam(
             backbone,
             head_size=head_size,
-            dim=1024,
-            pred_dim=512,)
+            dim=dim,
+            pred_dim=pred_dim,)
         criterion = simsiam.NegativeCosineSimilarity()
         model.to(self.DEVICE)
         return model, criterion
@@ -183,13 +183,13 @@ class SimSiam:
             )
         return train_transform
 
-    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512):
+    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, dim=2048, pred_dim=512,):
         """return backbone model"""
         model= simsiam.SimSiam(
             backbone,
             head_size=head_size,
-            dim=1024,
-            pred_dim=512,)
+            dim=dim,
+            pred_dim=pred_dim,)
         model=model.encoder
         model.to(self.DEVICE)
         return model
