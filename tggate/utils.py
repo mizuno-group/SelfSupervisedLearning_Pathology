@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
 try:
     from openslide import OpenSlide
+    import cv2
 except:
     print("openslide is not available")
 
@@ -53,7 +54,7 @@ def make_patch(filein:str="", patch_size:int=256, patch_number:int=1000, seed:in
     # load
     wsi = OpenSlide(filein)
     # get patch mask
-    mask = get_patch_mask(image_file=filein, patch_size=patch_size)
+    mask = get_patch_mask(wsi, patch_size=patch_size)
     mask_shape=mask.shape
     # extract / append
     lst_number=np.array(range(len(mask.flatten())))[mask.flatten()]
