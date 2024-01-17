@@ -19,19 +19,14 @@ def check_file(str_file):
 
 def get_patch_mask(image, patch_size, threshold=None,):
     """
-    get_patchesに加え, WSI内に複数ある切片を分けて認識するようにする。
-
     Parameters
     ----------
     iamge: openslide.OpenSlide
     patch_size: int
-    threshold: float or None
-        各patchが背景かどうかを判定する彩度のthreshold.
-        Noneの場合, OTSU法で決定する。
+    threshold: float or None (OTSU)
     Returns
     -------
     mask: np.array(int)[wsi_height, wsi_width]
-        各patchがどの切片に属するか(-1=背景)
     """
     level = image.get_best_level_for_downsample(patch_size)
     downsample = image.level_downsamples[level]
@@ -41,7 +36,6 @@ def get_patch_mask(image, patch_size, threshold=None,):
     whole = whole.resize((int(whole.width / ratio), int(whole.height / ratio)))
     whole = np.array(whole, dtype=np.uint8)
     saturation = whole[:,:,1]
-
     if threshold is None:
         threshold, _ = cv2.threshold(saturation, 0, 255, cv2.THRESH_OTSU)
     mask = saturation > threshold
