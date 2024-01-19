@@ -4,6 +4,8 @@
 
 @author: Katsuhisa MORITA
 """
+import argparse
+import time
 import os
 import re
 import datetime
@@ -21,6 +23,26 @@ from openslide import OpenSlide
 
 import sslmodel
 import sslmodel.sslutils as sslutils
+
+# argument
+parser = argparse.ArgumentParser(description='CLI inference')
+parser.add_argument('--note', type=str, help='feature')
+parser.add_argument('--seed', type=int, default=24771)
+parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--num_pool_patch', type=int, default=None)
+parser.add_argument('--num_patch', type=int, default=None)
+parser.add_argument('--model_name', type=str, default='ResNet18') # architecture name
+parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
+parser.add_argument('--model_path', type=str, default='')
+parser.add_argument('--dir_result', type=str, default='')
+parser.add_argument('--pretrained', action='store_true')
+parser.add_argument('--tggate_all', action='store_true')
+parser.add_argument('--eisai', action='store_true')
+parser.add_argument('--shionogi', action='store_true')
+parser.add_argument('--rat', action='store_true')
+
+args = parser.parse_args()
+sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 # Featurize Class
 class Featurize:
@@ -42,11 +64,11 @@ class Featurize:
                 for i, out in enumerate(outs):
                     self.out_all[i].append(out)
 
-    def pooling(self, num_patch:int=200):
+    def pooling(self, num_pool_patch:int=200):
         """max pooling"""
         for i, out in enumerate(self.out_all):
             self.out_all_pool[i].append(
-                np.max(out.reshape(-1, num_patch, self.lst_size[i]),axis=1)
+                np.max(out.reshape(-1, num_pool_patch, self.lst_size[i]),axis=1)
                 )
         # reset output list
         self.out_all=[[] for size in self.lst_size]
@@ -397,8 +419,9 @@ def prepare_model(model_name:str='ResNet18', ssl_name="barlowtwins",  model_path
 
 def featurize_layer(
     model_name="", ssl_name="", model_path="", pretrained=False,
-    lst_filein=list(), lst_filename=list(),
-    dir_result="",  
+    lst_filein=list(), lst_filename=list(), dir_result="",
+    num_pool_patch=None,
+    num_patch=None,
     batch_size=128, DEVICE="cpu", ):
     """featurize"""
     # load model
@@ -415,7 +438,50 @@ def featurize_layer(
         os.makedirs(dir_result)
     # featurize
     for filein, filename in zip(lst_filein, lst_filename):
-        data_loader=prepare_dataset(filein=filein, batch_size=batch_size)
+        data_loader=prepare_dataset(filein=filein, batch_size=batch_size, num_patch=num_patch)
         extract_class.featurize(model, data_loader)
-        extract_class.save_outpool(folder=folder_name, name=result_name)
+        if num_pool_patch:
+            extract_class.pooling(num_pool_patch=num_pool_patch)
+        extract_class.save_outpool(folder=dir_result, name=filename)
         
+def main():
+    # settings
+    start = time.time() # for time stamp
+    print(f"start: {start}")
+
+    # 1. load file locations and names
+    if args.tggate_all: 
+        df_info=pd.read_csv(f"/workspace/tggate/data/tggate_info_ext.csv")
+        lst_filein=df_info["DIR"].tolist()
+        lst_filename=list(range(df_all.shape[0]))
+    if args.eisai:
+        df_info=pd.read_csv("/workspace/tggate/data/eisai_info.csv")
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=[f"/workspace/HDD2/pharm/eisai/raw/{i}.svs" for i in df_info["ID"].tolist()]
+        lst_filename=df_info["INDEX"].tolist()
+    if args.shionogi:
+        df_info=pd.read_csv("/workspace/tggate/data/shionogi_info.csv")
+        df_info=df_info.loc[df_info["SAMPLE"],:]
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=[i.replace("/work/gd43/share/pharm/shionogi", "/workspace/HDD2/pharm").replace(".npy","").replace("patch","raw") for i in df_info["FILE"].tolist()]
+        lst_filein=[glob.glob(f"{i}*")[0] for i in lst_filein]
+        lst_filename=df_info["INDEX"].tolist()
+    if args.rat:
+        df_info=pd.read_csv("/workspace/tggate/data/our_info.csv")
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=[f"/workspace/HDD2/Lab/Rat_DILI/raw/{i}.tif" for i in df_info["NAME"].tolist()]
+        lst_filename=df_info["INDEX"].tolist()
+            
+    # 2. inference & save results
+    featurize_layer(
+        model_name=args.model_name, ssl_name=args.ssl_name, 
+        model_path=args.model_path, pretrained=args.pretrained,
+        lst_filein=lst_filein, lst_filename=lst_filename,
+        dir_result=args.dir_result,
+        num_pool_patch=args.num_pool_patch, num_patch=args.num_patch,
+        batch_size=args.batch_size, DEVICE=DEVICE, num_patch=NUM_PATCH)
+    print('elapsed_time: {:.2f} min'.format((time.time() - start)/60))        
+
+if __name__ == '__main__':
+    DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
+    main()

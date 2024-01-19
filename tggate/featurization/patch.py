@@ -1,24 +1,50 @@
 # -*- coding: utf-8 -*-
 """
-# featurize module
+# predict / pooling
 
 @author: Katsuhisa MORITA
 """
-import os
-import re
+# path setting
+PROJECT_PATH = '/work/gd43/a97001'
+
+# packages installed in the current environment
+import sys
 import datetime
-from typing import List, Tuple, Union, Sequence
+import argparse
+import time
 
 import numpy as np
+import pandas as pd
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
-from PIL import ImageOps, Image
 
+# original packages in src
+sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
+from tggate import featurize
 import sslmodel
-import sslmodel.sslutils as sslutils
+
+# argument
+parser = argparse.ArgumentParser(description='CLI inference')
+parser.add_argument('--note', type=str, help='feature')
+parser.add_argument('--seed', type=int, default=24771)
+parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--num_patch', type=int, default=200)
+parser.add_argument('--model_name', type=str, default='ResNet18') # architecture name
+parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
+parser.add_argument('--dir_model', type=str, default='')
+parser.add_argument('--result_name', type=str, default='')
+parser.add_argument('--folder_name', type=str, default='')
+parser.add_argument('--pretrained', action='store_true')
+
+parser.add_argument('--tggate', action='store_true')
+parser.add_argument('--tggate_all', action='store_true')
+parser.add_argument('--kidney', action='store_true')
+parser.add_argument('--eisai', action='store_true')
+parser.add_argument('--shionogi', action='store_true')
+parser.add_argument('--rat', action='store_true')
+parser.add_argument('--mouse', action='store_true')
+
+args = parser.parse_args()
+sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 # DataLoader
 class Dataset_Batch(torch.utils.data.Dataset):
@@ -149,7 +175,11 @@ class ResNet18Featurize(Featurize):
 ## Featurize Methods
 # name: [Model_Class, last_layer_size, Featurize_Class]
 DICT_MODEL = {
+    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536, EfficientNetB3Featurize],
+    "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
     "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888, RegNetY16gfFeaturize],
+    "DenseNet121": [torchvision.models.densenet121, 1024, DenseNet121Featurize],
 }
 DICT_SSL={
     "barlowtwins":sslutils.BarlowTwins,
@@ -221,3 +251,52 @@ def featurize_layer(
         extract_class.featurize(model, data_loader)
         extract_class.pooling(num_patch=num_patch)
     extract_class.save_outpool(folder=folder_name, name=result_name)
+
+def main():
+    # settings
+    start = time.time() # for time stamp
+    print(f"start: {start}")
+    # 1. model construction
+    model = prepare_model(
+        model_name=args.model_name, 
+        ssl_name=args.ssl_name, 
+        model_path=args.dir_model,
+        pretrained=args.pretrained,
+        DEVICE=DEVICE
+        )
+    ## file names
+    if args.tggate:
+        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
+        lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext2/{i}.npy" for i in df_info["FILE"].tolist()]
+    if args.tggate_all:
+        lst_filein=[f"/work/gd43/share/tggates/liver/batch_all/batch_{batch}.npy" for batch in range(26)]
+    if args.kidney:
+        lst_filein=[f"/work/gd43/share/tggates/kidney/batch_all/batch_{batch}.npy" for batch in range(26)]
+    if args.eisai:
+        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/eisai_info.csv")
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=[f"/work/gd43/share/pharm/eisai/patch/{i}.npy" for i in df_info["ID"].tolist()]
+    if args.shionogi:
+        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/shionogi_info.csv")
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=df_info["FILE"].tolist()
+    if args.rat:
+        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/our_info.csv")
+        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
+        lst_filein=[f"/work/gd43/share/Lab/Rat_DILI/patch/{name}.npy" for name in lst_name]
+    if args.mouse:
+        df_info=pd.read_csv(f"/work/gd43/share/Lab/mouse_DILI/mouse_info.csv")
+        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
+        lst_filein=[f"/work/gd43/share/Lab/mouse_DILI/patch/{name}.npy" for name in lst_name]
+        
+    # 2. inference & save results
+    featurize_layer(
+        model, model_name=args.model_name,
+        batch_size=args.batch_size, lst_filein=lst_filein,
+        folder_name=args.folder_name, result_name=args.result_name,
+        DEVICE=DEVICE, num_patch=args.num_patch)
+    print('elapsed_time: {:.2f} min'.format((time.time() - start)/60))        
+
+if __name__ == '__main__':
+    DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
+    main()
