@@ -355,7 +355,7 @@ def to_logger(
 class EarlyStopping:
     """
     Early stops the training if validation loss doesn't improve after a given patience.
-    add little changes from from https://github.com/Bjarten/early-stopping-pytorch/pytorchtools.py
+    add some changes from from https://github.com/Bjarten/early-stopping-pytorch/pytorchtools.py
     """
     def __init__(self, patience:int=7, delta:float=0, path:str='checkpoint.pt'):
         """
