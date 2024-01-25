@@ -5,7 +5,7 @@
 @author: Katsuhisa MORITA
 """
 # path setting
-PROJECT_PATH = '/work/gd43/a97001'
+PROJECT_PATH = '/workspace/tggate'
 
 # packages installed in the current environment
 import sys
@@ -268,27 +268,22 @@ def main():
     if args.tggate:
         df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
         lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext2/{i}.npy" for i in df_info["FILE"].tolist()]
-    if args.tggate_all:
-        lst_filein=[f"/work/gd43/share/tggates/liver/batch_all/batch_{batch}.npy" for batch in range(26)]
-    if args.kidney:
-        lst_filein=[f"/work/gd43/share/tggates/kidney/batch_all/batch_{batch}.npy" for batch in range(26)]
     if args.eisai:
         df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/eisai_info.csv")
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=[f"/work/gd43/share/pharm/eisai/patch/{i}.npy" for i in df_info["ID"].tolist()]
+        lst_filein=df_info["DIR_PATCH"].tolist()
     if args.shionogi:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/shionogi_info.csv")
+        folder="/workspace/HDD2/pharm/shionogi"
+        df_info=pd.read_csv("/workspace/tggate/data/shionogi_info.csv")
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=df_info["FILE"].tolist()
+        lst_filein=df_info["DIR_PATCH"].tolist()
     if args.rat:
         df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/our_info.csv")
-        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
-        lst_filein=[f"/work/gd43/share/Lab/Rat_DILI/patch/{name}.npy" for name in lst_name]
-    if args.mouse:
-        df_info=pd.read_csv(f"/work/gd43/share/Lab/mouse_DILI/mouse_info.csv")
-        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
-        lst_filein=[f"/work/gd43/share/Lab/mouse_DILI/patch/{name}.npy" for name in lst_name]
+        df_info=df_info.sort_values(by=["INDEX"])
+        lst_filein=df_info["DIR_PATCH"].tolist()
         
+    lst_filein=[f"{i.rsplit('/', 1)[0]}/patch/{os.path.basename(filein).rsplit('.', 1)[0]}.npy" for i in lst_filein]
+
     # 2. inference & save results
     featurize_layer(
         model, model_name=args.model_name,
