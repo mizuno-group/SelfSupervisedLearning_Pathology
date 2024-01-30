@@ -13,8 +13,6 @@ from sklearn.manifold import TSNE, MDS
 from sklearn.metrics import pairwise_distances
 from scipy import stats
 
-from inmoose.pycombat import pycombat_norm
-
 # file name
 file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"
 file_eisai_info="/workspace/230727_pharm/data/processed/eisai_info.csv"
@@ -96,6 +94,43 @@ def load_array_fold(
         arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
     return arr_x_train, arr_x_test
 
+def load_array_fold_wsi(
+    df_info, fold:int=10, layer:int=10, 
+    folder="", name="layer", pretrained=False,
+    num_patch=256, strategy="max", random_state=24771,
+    convertz=True,
+    compression=False, n_components=2, 
+    ):
+    # load info
+    random.seed(random_state)
+    ind_train=df_info[df_info["FOLD"]!=fold]["INDEX"].tolist()
+    ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
+    if pretrained:
+        lst_train=[f"{folder}/pretrained_{i}_{name}{layer}.npy" for i in ind_train]
+        lst_test=[f"{folder}/pretrained_{i}_{name}{layer}.npy" for i in ind_train]
+    else:
+        lst_train=[f"{folder}/fold{fold}_{i}_{name}{layer}.npy" for i in ind_train]
+        lst_test=[f"{folder}/fold{fold}_{i}_{name}{layer}.npy" for i in ind_test]
+    # load
+    dat=PoolingMIL(strategy=strategy, random_state=random_state)
+    for filein in lst_train:
+        dat.pooling_data(np.load(filein).astype(np.float32), num_patch=num_patch)
+    dat.set_train_data()
+    for filein in lst_test:
+        dat.pooling_data(np.load(filein).astype(np.float32), num_patch=num_patch)
+    dat.set_test_data()
+    arr_x_train=dat.train_data
+    arr_x_test=dat.test_data
+    del dat
+    # preprocessing
+    if compression:
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+        arr_x_train, arr_x_test = pca(arr_x_train, arr_x_test, n_components=n_components)
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+    elif convertz:
+        arr_x_train, arr_x_test = standardize(arr_x_train, arr_x_test)
+    return arr_x_train, arr_x_test
+
 def load_array(layer:int=10, folder="", name="", size=None, pretrained=False, n_model=5):
     if pretrained:
         lst_arr_x=[np.load(f"{folder}/pretrained_layer{layer}.npy")]
@@ -134,7 +169,6 @@ def load_array_preprocess(
 def load_array_preprocess_two(
     layer:int=10, folder1="", folder2="", name="", size=None, pretrained=False, n_model=5,
     convertz=False, z_ctrl=False, ctrl_pos=[], ctrl_pos2=[],
-    combat=False, 
     compression=False, n_components=16,
     concat=False, meta_viz=False,
     ):
@@ -148,14 +182,6 @@ def load_array_preprocess_two(
         )
     arr_embedding=None
     arr_embedding2=None
-    if combat:
-        lst_arr_all=[np.array(pycombat_norm(
-            data=np.concatenate([arr_x, arr_x2], axis=0).T,
-            batch=[0]*arr_x.shape[0]+[1]*arr_x2.shape[0],
-            prior_par=False,
-            )) for arr_x, arr_x2 in zip(lst_arr_x, lst_arr_x2)]
-        lst_arr_x, lst_arr_x2=[(i.T)[:lst_arr_x[0].shape[0]] for i in lst_arr_all], [(i.T)[lst_arr_x[0].shape[0]:] for i in lst_arr_all]
-        del lst_arr_all
     if convertz:
         if z_ctrl:
             lst_arr_x=[standardize_ctrl(arr_x, ctrl=ctrl_pos,) for arr_x in lst_arr_x]

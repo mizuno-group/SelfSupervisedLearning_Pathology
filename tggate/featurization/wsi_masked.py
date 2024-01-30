@@ -12,6 +12,7 @@ import sys
 import datetime
 from typing import List, Tuple, Union, Sequence
 
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import torch
@@ -39,7 +40,9 @@ parser.add_argument('--model_name', type=str, default='ResNet18') # architecture
 parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
 parser.add_argument('--model_path', type=str, default='')
 parser.add_argument('--dir_result', type=str, default='')
+parser.add_argument('--result_name', type=str, default='foldx_')
 parser.add_argument('--pretrained', action='store_true')
+parser.add_argument('--resume', action='store_true')
 parser.add_argument('--tggate_all', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
@@ -266,7 +269,7 @@ class DatasetWSI(torch.utils.data.Dataset):
         return self.datanum
 
     def __getitem__(self,idx):
-        location=lst_location[idx]
+        location=self.lst_location[idx]
         out_data=self.wsi[location[0]:location[0]+self.patch_size,location[1]:location[1]+self.patch_size,:]
         out_data = Image.fromarray(out_data).convert("RGB")
         if self._transform:
@@ -384,7 +387,7 @@ def featurize_layer(
     if not os.path.exists(dir_result):
         os.makedirs(dir_result)
     # featurize
-    for filein, filename, filemask in zip(lst_filein, lst_filename, lst_filemask):
+    for filein, filename, filemask in tqdm(zip(lst_filein, lst_filename, lst_filemask)):
         data_loader=prepare_dataset(filein=filein, filemask=filemask, batch_size=batch_size, patch_size=patch_size, num_patch=num_patch)
         extract_class.featurize(model, data_loader)
         if num_pool_patch:
@@ -403,9 +406,15 @@ def main():
     if args.tggate_all: 
         df_info=pd.read_csv(f"/workspace/tggate/data/tggate_info_ext.csv")
         lst_filein=df_info["DIR"].tolist()
-        lst_filename=list(range(df_info.shape[0]))
+        lst_filename=[f"{result_name}{i}" for i in list(range(df_info.shape[0]))]
         lst_filemask=[f"/workspace/HDD3/TGGATEs/mask/{i}_location.pickle" for i in lst_filename]
             
+    if args.resume:
+        lst_fileout=[f"{args.dir_result}/{i}_layer5.npy" for i in lst_filename]
+        lst_tf=[not os.path.isfile(i) for i in lst_fileout]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
+        lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
     # 2. inference & save results
     featurize_layer(
         model_name=args.model_name, ssl_name=args.ssl_name, 

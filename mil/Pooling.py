@@ -3,30 +3,41 @@ Max Plooling and Logistic Regression for MIL
 """
 
 import random
-
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 from tggate.utils import standardize
 
 class PoolingMIL:
-    def __init__(self, n_features:int=512, strategy="max"):
-        self.n_features=n_features
-        self.train_data=np.zeros((0,self.n_features), dtype=np.float32)
-        self.test_data=np.zeros((0,self.n_features), dtype=np.float32)
+    def __init__(self, strategy="max", random_state:int=24771):
+        self.data=[]
+        self.train_data=None
+        self.test_data=None
         dict_strategy={
             "max":self._max_pooling,
             "min":self._min_pooling,
             "mean":self._mean_pooling,
         }
-        self.pooling=dict_strategy[strategy]
+        self._pooling=dict_strategy[strategy]
         self.logistic_model=None
+        random.seed(random_state)
 
-    def prepare_train_data(self, X):
-        self.train_data = self.pooling(self.train_data, X)    
+    def pooing_data(self, X, num_patch:int=None):
+        self.data.append(self.pooling(X, num_patch=num_patch))
 
-    def prepare_test_data(self, X):
-        self.test_data = self.pooling(self.test_data, X)
+    def set_train_data(self, X=[], ):
+        if len(X)==0:
+            self.train_data=np.stack(self.data)
+            self.data=[]
+        else:
+            self.train_data=X
+
+    def set_test_data(self, X=[], ):
+        if len(X)==0:
+            self.test_data=np.stack(self.data)
+            self.data=[]
+        else:
+            self.test_data=X
 
     def save_model(self, model_path=""):
         pd.to_pickle(np.concatenate([
@@ -52,15 +63,27 @@ class PoolingMIL:
     def _predict(self, x_test=None):
         return self.logistic_model.predict_proba(x_test)[:,1]
 
-    def _max_pooling(self, data, X):
-        return np.concatenate([data, np.max(X, axis=1)])
+    def _max_pooling(self, X, num_patch:int=None):
+        if num_patch:
+            lst_loc=random.sample(list(range(X.shape[0])), num_patch)
+            return np.max(X[lst_loc,:], axis=0)
+        else:
+            return np.max(X, axis=0)
 
-    def _min_pooling(self, data, X):
-        return np.concatenate([data, np.min(X, axis=1)])
+    def _min_pooling(self, X, num_patch:int=None):
+        if num_patch:
+            lst_loc=random.sample(list(range(X.shape[0])), num_patch)
+            return np.min(X[lst_loc,:], axis=0)
+        else:
+            return np.min(X, axis=0)
 
-    def _mean_pooling(self, data, X):
-        return np.concatenate([data, np.mean(X, axis=1)])
-
+    def _mean_pooling(self, X, num_patch:int=None):
+        if num_patch:
+            lst_loc=random.sample(list(range(X.shape[0])), num_patch)
+            return np.mean(X[lst_loc,:], axis=0)
+        else:
+            return np.mean(X, axis=0)
+        
     def _delete_data(self):
-        self.train_data=np.zeros((0,self.n_features), dtype=np.float32)
-        self.test_data=np.zeros((0,self.n_features), dtype=np.float32)
+        self.train_data=[]
+        self.test_data=[]

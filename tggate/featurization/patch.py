@@ -19,6 +19,7 @@ import torch
 
 # original packages in src
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
+import settings
 from tggate import featurize
 import sslmodel
 
@@ -37,11 +38,9 @@ parser.add_argument('--pretrained', action='store_true')
 
 parser.add_argument('--tggate', action='store_true')
 parser.add_argument('--tggate_all', action='store_true')
-parser.add_argument('--kidney', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
 parser.add_argument('--rat', action='store_true')
-parser.add_argument('--mouse', action='store_true')
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
@@ -266,23 +265,18 @@ def main():
         )
     ## file names
     if args.tggate:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
-        lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext2/{i}.npy" for i in df_info["FILE"].tolist()]
+        df_info=pd.read_csv(settings.file_tggate)
     if args.eisai:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/eisai_info.csv")
+        df_info=pd.read_csv(settings.file_eisai)
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=df_info["DIR_PATCH"].tolist()
     if args.shionogi:
         folder="/workspace/HDD2/pharm/shionogi"
-        df_info=pd.read_csv("/workspace/tggate/data/shionogi_info.csv")
+        df_info=pd.read_csv(settings.file_shionogi)
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=df_info["DIR_PATCH"].tolist()
     if args.rat:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/our_info.csv")
+        df_info=pd.read_csv(settings.file_our)
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=df_info["DIR_PATCH"].tolist()
-        
-    lst_filein=[f"{i.rsplit('/', 1)[0]}/patch/{os.path.basename(filein).rsplit('.', 1)[0]}.npy" for i in lst_filein]
+    lst_filein=df_info["DIR_PATCH"].tolist()        
 
     # 2. inference & save results
     featurize_layer(

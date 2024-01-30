@@ -40,7 +40,9 @@ parser.add_argument('--model_name', type=str, default='ResNet18') # architecture
 parser.add_argument('--ssl_name', type=str, default='barlowtwins') # ssl architecture name
 parser.add_argument('--model_path', type=str, default='')
 parser.add_argument('--dir_result', type=str, default='')
+parser.add_argument('--result_name', type=str, default='foldx_')
 parser.add_argument('--pretrained', action='store_true')
+parser.add_argument('--resume', action='store_true')
 parser.add_argument('--tggate_all', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
@@ -420,7 +422,12 @@ def main():
         df_info=pd.read_csv("/workspace/tggate/data/our_info.csv")
         lst_filein=[f"/workspace/HDD2/Lab/Rat_DILI/raw/{i}.tif" for i in df_info["NAME"].tolist()]
         lst_filename=df_info["INDEX"].tolist()
-            
+    lst_filename=[f"{result_name}{i}" for i in lst_filename]
+    if args.resume:
+        lst_fileout=[f"{args.dir_result}/{i}_layer5.npy" for i in lst_filename]
+        lst_tf=[not os.path.isfile(i) for i in lst_fileout]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
     # 2. inference & save results
     featurize_layer(
         model_name=args.model_name, ssl_name=args.ssl_name, 

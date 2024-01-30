@@ -17,30 +17,6 @@ def check_file(str_file):
     except:
         print("can't open")
 
-def get_patch_mask(image, patch_size, threshold=None,):
-    """
-    Parameters
-    ----------
-    iamge: openslide.OpenSlide
-    patch_size: int
-    threshold: float or None (OTSU)
-    Returns
-    -------
-    mask: np.array(int)[wsi_height, wsi_width]
-    """
-    level = image.get_best_level_for_downsample(patch_size)
-    downsample = image.level_downsamples[level]
-    ratio = patch_size / downsample
-    whole = image.read_region(location=(0,0), level=level,
-        size = image.level_dimensions[level]).convert('HSV')
-    whole = whole.resize((int(whole.width / ratio), int(whole.height / ratio)))
-    whole = np.array(whole, dtype=np.uint8)
-    saturation = whole[:,:,1]
-    if threshold is None:
-        threshold, _ = cv2.threshold(saturation, 0, 255, cv2.THRESH_OTSU)
-    mask = saturation > threshold
-    return mask
-
 def make_patch(filein:str="", patch_size:int=256, num_patch:int=512, random_state:int=24771, inside=False,):
     """extract patch from WSI"""
     # set seed
@@ -67,6 +43,30 @@ def make_patch(filein:str="", patch_size:int=256, num_patch:int=512, random_stat
         ap(np.array(patch_image, np.uint8)[:,:,:3])
     res=np.concatenate(res).astype(np.uint8)
     return res, lst_number
+
+def get_patch_mask(image, patch_size, threshold=None,):
+    """
+    Parameters
+    ----------
+    iamge: openslide.OpenSlide
+    patch_size: int
+    threshold: float or None (OTSU)
+    Returns
+    -------
+    mask: np.array(int)[wsi_height, wsi_width]
+    """
+    level = image.get_best_level_for_downsample(patch_size)
+    downsample = image.level_downsamples[level]
+    ratio = patch_size / downsample
+    whole = image.read_region(location=(0,0), level=level,
+        size = image.level_dimensions[level]).convert('HSV')
+    whole = whole.resize((int(whole.width / ratio), int(whole.height / ratio)))
+    whole = np.array(whole, dtype=np.uint8)
+    saturation = whole[:,:,1]
+    if threshold is None:
+        threshold, _ = cv2.threshold(saturation, 0, 255, cv2.THRESH_OTSU)
+    mask = saturation > threshold
+    return mask
 
 def get_mask_inside(
     image, 
