@@ -5,7 +5,7 @@
 @author: Katsuhisa MORITA
 """
 # path setting
-PROJECT_PATH = '/work/gd43/a97001'
+PROJECT_PATH = '/workspace/tggate'
 
 # packages installed in the current environment
 import sys
@@ -19,6 +19,7 @@ import torch
 
 # original packages in src
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
+import settings
 from tggate import featurize
 import sslmodel
 
@@ -37,11 +38,9 @@ parser.add_argument('--pretrained', action='store_true')
 
 parser.add_argument('--tggate', action='store_true')
 parser.add_argument('--tggate_all', action='store_true')
-parser.add_argument('--kidney', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
 parser.add_argument('--rat', action='store_true')
-parser.add_argument('--mouse', action='store_true')
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
@@ -266,29 +265,19 @@ def main():
         )
     ## file names
     if args.tggate:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/tggate_info.csv")
-        lst_filein=[f"/work/gd43/share/tggates/liver/patch/ext2/{i}.npy" for i in df_info["FILE"].tolist()]
-    if args.tggate_all:
-        lst_filein=[f"/work/gd43/share/tggates/liver/batch_all/batch_{batch}.npy" for batch in range(26)]
-    if args.kidney:
-        lst_filein=[f"/work/gd43/share/tggates/kidney/batch_all/batch_{batch}.npy" for batch in range(26)]
+        df_info=pd.read_csv(settings.file_tggate)
     if args.eisai:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/eisai_info.csv")
+        df_info=pd.read_csv(settings.file_eisai)
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=[f"/work/gd43/share/pharm/eisai/patch/{i}.npy" for i in df_info["ID"].tolist()]
     if args.shionogi:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/shionogi_info.csv")
+        folder="/workspace/HDD2/pharm/shionogi"
+        df_info=pd.read_csv(settings.file_shionogi)
         df_info=df_info.sort_values(by=["INDEX"])
-        lst_filein=df_info["FILE"].tolist()
     if args.rat:
-        df_info=pd.read_csv(f"{PROJECT_PATH}/experiments_pharm/our_info.csv")
-        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
-        lst_filein=[f"/work/gd43/share/Lab/Rat_DILI/patch/{name}.npy" for name in lst_name]
-    if args.mouse:
-        df_info=pd.read_csv(f"/work/gd43/share/Lab/mouse_DILI/mouse_info.csv")
-        lst_name = [conv_number(i) for i in df_info["NAME"].tolist()]
-        lst_filein=[f"/work/gd43/share/Lab/mouse_DILI/patch/{name}.npy" for name in lst_name]
-        
+        df_info=pd.read_csv(settings.file_our)
+        df_info=df_info.sort_values(by=["INDEX"])
+    lst_filein=df_info["DIR_PATCH"].tolist()        
+
     # 2. inference & save results
     featurize_layer(
         model, model_name=args.model_name,

@@ -383,9 +383,9 @@ class PlotPredFold:
         }
         dict_position={
             "Accuracy":1,
+            "Balanced Accuracy":2,
             "AUROC":3,
             "AUPR":4,
-            "Balanced Accuracy":2,
         }
         title=dict_task[task][0]
         # Load

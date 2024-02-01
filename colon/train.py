@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-# test version (small scale)
+# For CRC dataset
 
 @author: Katsuhisa MORITA
 """

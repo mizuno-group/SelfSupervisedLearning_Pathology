@@ -19,8 +19,8 @@ from evaluate import utils, settings
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
 
-lst_classification=settings.lst_classification
-lst_prognosis=settings.lst_prognosis
+lst_classification=settings.lst_findings
+lst_prognosis=settings.lst_findings
 lst_compounds=settings.lst_compounds
 lst_moa=settings.lst_moa
 file_all=settings.file_all
@@ -38,6 +38,8 @@ class ClassificationFold:
         name="",
         layer=0,
         pretrained=False,
+        n_fold=5,
+        wsi=False, num_patch=None, streategy="max", random_state=24771,
         convertz=True,
         compression=False, n_components=16,
         pred_method="logistic_regression", params=dict(),
@@ -62,7 +64,7 @@ class ClassificationFold:
 
         # Predict / Evaluate
         lst_res=[]
-        for fold in range(5):
+        for fold in range(n_fold):
             if moa:
                 self._load_moa(fold=fold, lst_features=lst_features)
             if compound_name:
@@ -74,12 +76,21 @@ class ClassificationFold:
                     prognosis=prognosis, constant=(pred_method=="constant"),
                 )
             else:
-                arr_x_train, arr_x_test = utils.load_array_fold(
-                    self.df_info, fold=fold, layer=layer,
-                    folder=folder, name=name, pretrained=pretrained,
-                    convertz=convertz,
-                    compression=compression, n_components=n_components,
-                )
+                if wsi:
+                    arr_x_train, arr_x_test = utils.load_array_fold_wsi(
+                        self.df_info, fold=fold, layer=layer,
+                        folder=folder, name=name, pretrained=pretrained,
+                        num_patch=num_patch, strategy=strategy, random_state=random_state,
+                        convertz=convertz,
+                        compression=compression, n_components=n_components,
+                    )
+                else:
+                    arr_x_train, arr_x_test = utils.load_array_fold(
+                        self.df_info, fold=fold, layer=layer,
+                        folder=folder, name=name, pretrained=pretrained,
+                        convertz=convertz,
+                        compression=compression, n_components=n_components,
+                    )
             y_train = self.df_info.loc[self.df_info["FOLD"]!=fold, self.lst_features].values
             y_test = self.df_info.loc[self.df_info["FOLD"]==fold, self.lst_features].values
             if finding or prognosis:

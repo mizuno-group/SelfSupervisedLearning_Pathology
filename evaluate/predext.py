@@ -62,7 +62,6 @@ class PredictCompExt:
         layer=4, size=None,
         n_model=5,
         convertz=True, z_ctrl=False,
-        combat=False,
         compression=False, n_components=16,
         params_lr=dict(),
         plot_heat=False,
@@ -105,7 +104,6 @@ class PredictCompExt:
             convertz=convertz, z_ctrl=z_ctrl, 
             ctrl_pos=self.df_info[self.df_info["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
             ctrl_pos2=self.df_info2[self.df_info2["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
-            combat=combat,
             compression=compression, n_components=n_components,
             concat=False, meta_viz=False,
         )
@@ -180,7 +178,6 @@ class ClusteringExt:
         pretrained=False,
         layer=4, size=None,
         n_model=5,      
-        combat=False,
         convertz=False, z_ctrl=False,
         concat=False, meta_viz=False,
         number=0,
@@ -218,7 +215,6 @@ class ClusteringExt:
             convertz=convertz, z_ctrl=z_ctrl, 
             ctrl_pos=self.df_info[self.df_info["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
             ctrl_pos2=self.df_info2[self.df_info2["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
-            combat=combat,
             compression=True, n_components=2,
             concat=concat, meta_viz=meta_viz,
         )
@@ -233,7 +229,6 @@ class ClusteringExt:
         layer=4, size=None,
         n_model=5,
         random_f=False,
-        combat=False,
         convertz=True, z_ctrl=True,
         compression=False,
         n_components=16,
@@ -270,7 +265,6 @@ class ClusteringExt:
             convertz=convertz, z_ctrl=z_ctrl, 
             ctrl_pos=self.df_info[self.df_info["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
             ctrl_pos2=self.df_info2[self.df_info2["COMPOUND_NAME"]=="vehicle"]["INDEX"].tolist(), 
-            combat=combat,
             compression=compression, n_components=n_components,
             concat=False, meta_viz=False,
         )
