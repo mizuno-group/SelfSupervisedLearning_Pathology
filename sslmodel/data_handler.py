@@ -21,7 +21,8 @@ from PIL import Image
 
 # dataset
 def prep_dataloader(
-    dataset, batch_size:int, shuffle:bool=True, num_workers:int=4, pin_memory:bool=True, drop_last:bool=True, sampler=None
+    dataset, batch_size:int, shuffle:bool=True, num_workers:int=4, pin_memory:bool=True, 
+    drop_last:bool=True, sampler=None, collate_fn=None,
     ) -> torch.utils.data.DataLoader:
     """
     prepare train and test loader
@@ -55,6 +56,7 @@ def prep_dataloader(
         worker_init_fn=_worker_init_fn,
         drop_last=drop_last,
         sampler=sampler,
+        collate_fn=collate_fn
         )
     return loader
 

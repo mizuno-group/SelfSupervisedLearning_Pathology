@@ -66,21 +66,21 @@ class PoolingMIL:
     def _max_pooling(self, X, num_patch:int=None):
         if num_patch:
             lst_loc=random.sample(list(range(X.shape[0])), num_patch)
-            return np.max(X[lst_loc,:], axis=0)
+            return np.max(X[lst_loc], axis=0)
         else:
             return np.max(X, axis=0)
 
     def _min_pooling(self, X, num_patch:int=None):
         if num_patch:
             lst_loc=random.sample(list(range(X.shape[0])), num_patch)
-            return np.min(X[lst_loc,:], axis=0)
+            return np.min(X[lst_loc], axis=0)
         else:
             return np.min(X, axis=0)
 
     def _mean_pooling(self, X, num_patch:int=None):
         if num_patch:
             lst_loc=random.sample(list(range(X.shape[0])), num_patch)
-            return np.mean(X[lst_loc,:], axis=0)
+            return np.mean(X[lst_loc], axis=0)
         else:
             return np.mean(X, axis=0)
         

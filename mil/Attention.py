@@ -52,12 +52,12 @@ class AttentionBase(nn.Module):
 
     def calc_loss(self, X, Y):
         Y = Y.float()
-        Y_prob, _, A = self.forward(X)
+        Y_prob, _, _ = self.forward(X)
         Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
         if self.label_smoothing:
             Y=torch.clamp(Y, min=self.label_smoothing, max=1.-self.label_smoothing,)
         neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))  # negative log bernoulli
-        return neg_log_likelihood, A
+        return neg_log_likelihood
 
     def calc_error(self, X, Y):
         Y = Y.float()
@@ -130,12 +130,12 @@ class GatedAttentionBase(nn.Module):
 
     def calc_loss(self, X, Y):
         Y = Y.float()
-        Y_prob, _, A = self.forward(X)
+        Y_prob, _, _ = self.forward(X)
         Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
         if self.label_smoothing:
             Y=torch.clamp(Y, min=self.label_smoothing, max=1.-self.label_smoothing,)
         neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))  # negative log bernoulli
-        return neg_log_likelihood, A
+        return neg_log_likelihood
 
     def calc_error(self, X, Y):
         Y = Y.float()
@@ -159,29 +159,29 @@ class GatedAttentionBase(nn.Module):
         return torch.squeeze(self.forward(X)[0].detach()).cpu().numpy()
 
 class AttentionWSI(AttentionBase):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1):
-        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=1)
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=attention_branches, label_smoothing=label_smoothing)
 
     def forward(self, X):
         return self.forward_single(X)
 
 class AttentionMultiWSI(AttentionBase):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1):
-        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=1)
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=attention_branches, label_smoothing=label_smoothing)
 
     def forward(self, X):
         return self.forward_multiwsi(X)
 
 class GatedAttentionWSI(GatedAttentionBase):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1):
-        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=1)
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=attention_branches, label_smoothing=label_smoothing)
 
     def forward(self, X):
         return self.forward_single(X)
 
 class GatedAttentionMultiWSI(GatedAttentionBase):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1):
-        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=1)
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+        super().__init__(n_features=n_features, hidden_layer=hidden_layer, n_labels=n_labels, attention_branches=attention_branches, label_smoothing=label_smoothing)
 
     def forward(self, X):
         return self.forward_multiwsi(X)
