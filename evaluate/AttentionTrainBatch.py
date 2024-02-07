@@ -64,69 +64,57 @@ args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
 # prepare data
-class Dataset_WSI(torch.utils.data.Dataset):
+class Dataset_WSI_UnderSample_Batch(torch.utils.data.Dataset):
     """ load for each version """
     def __init__(self,
-                folder:str="",
-                target:str="",
-                fold:int=None,
-                layer:int=5,
-                test:bool=False,
-                ):
-        # load data
-        df_info=pd.read_csv(settings.file_classification)
-        df_info["INDEX"]=list(range(df_info.shape[0]))
-        if test:
-            df_info=df_info[df_info["FOLD"]==fold]
-        else:
-            df_info=df_info[df_info["FOLD"]!=fold]
-        self.lst_filein=[f"{folder}/fold{fold}_{i}_layer{layer}" for i in df_info["INDEX"]]
-        self.labels=torch.Tensor(df_info[target].tolist()).reshape(-1,1)
-        self.datanum = len(self.lst_filein)
-
-    def __len__(self):
-        return self.datanum
-
-    def __getitem__(self,idx):
-        out_data = torch.Tensor(np.load(self.lst_filein[idx]).astype(np.float32))
-        out_label = self.labels[idx]
-        return out_data, out_label
-
-class Dataset_WSI_UnderSample(torch.utils.data.Dataset):
-    """ load for each version """
-    def __init__(self,
-                lst_train_labels,
+                lst_labels,
+                lst_fold,
                 folder:str="",
                 fold:int=None,
+                fold2:int=None,
                 layer:int=5,
                 ramdom_state:int=24771,
-                ratio:float=.5,
+                ratio:float=None,
                 ):
+        # set load data
+        lst_labels_fold=[lst_labels[i] for i, x in enumerate(lst_fold) if x==fold]
+        # sampling
+        if ratio:
+            label0=[i for i, x in enumerate(lst_labels_fold) if x==0]
+            label1=[i for i, x in enumerate(lst_labels_fold) if x==1]
+            random.seed(random_state)
+            label0 = random.sample(label0, int(len(label0)*ratio))
+            random.seed(args.seed)
+            lst_sample=label0+label1
+        else:
+            lst_sample=list(range(len(lst_labels_fold)))
         # load data
-        label0=[i for i, x in enumerate(lst_train_labels) if x==0]
-        label1=[i for i, x in enumerate(lst_train_labels) if x==1]
-        random.seed(random_state)
-        label1 = random.sample(label1, int(len(label1)*ratio))
-        lst_sample=label0+label1
+        success_load=False
+        while not success_load:
+            try:
+                self.data=pd.read_pickle(f"{folder_output}/fold{fold}_fold{fold2}_layer{layer}.pickle")
+                success_load=True
+            except:
+                success_load=False
+                print("try to load again")
+        self.data=[torch.Tensor(self.data[i]) for i in lst_sample]
         # set
-        self.lst_filein=[f"{folder}/fold{fold}_{i}_layer{layer}" for i in lst_sample]
-        self.labels=torch.Tensor([lst_train_labels[i] for i in lst_sample]).reshape(-1,1)
-        self.datanum = len(self.lst_filein)
+        self.labels=torch.Tensor([lst_labels_fold[i] for i in lst_sample]).reshape(-1,1)
+        self.datanum = len(lst_sample)
 
     def __len__(self):
         return self.datanum
 
     def __getitem__(self,idx):
-        out_data = torch.Tensor(np.load(self.lst_filein[idx]).astype(np.float32))
+        out_data = self.data[idx]
         out_label = self.labels[idx]
         return out_data, out_label
 
-def load_train_labels(fold:int=0, target:str=""):
+def load_labels(target:str=""):
     df_info=pd.read_csv(settings.file_classification)
-    df_info=df_info[df_info["FOLD"]!=fold]
-    # under sampling
     lst_labels=df_info[target].tolist()
-    return lst_labels
+    lst_fold=df_info["FOLD"].tolist()
+    return lst_labels, lst_fold
 
 def collate_fn(batch):
     """padding"""
@@ -135,17 +123,19 @@ def collate_fn(batch):
     label=torch.stack(label, dim=0)
     return data, label
 
-def prepare_sampling_data(lst_train_labels, folder:str="", layer:int=5, fold:int=0, batch_size:int=32, random_state:int=24771, ratio:float=0.5):
+def prepare_sampling_data(lst_labels, lst_fold, folder:str="", layer:int=5, fold:int=0, fold2:int=0, batch_size:int=32, random_state:int=24771, ratio:float=0.5):
     """
     data preparation
     
     """
     # data
-    train_dataset = Dataset_WSI_UnderSample(
-        lst_train_labels,
+    train_dataset = Dataset_WSI_UnderSample_Batch(
+        lst_labels,
+        lst_fold,
         folder=folder,
         layer=layer,
         fold=fold,
+        fold2=fold2,
         random_state=random_state,
         ratio=ratio
         )
@@ -157,7 +147,7 @@ def prepare_sampling_data(lst_train_labels, folder:str="", layer:int=5, fold:int
         )
     return train_loader
 
-def prepare_data(folder:str="", target:str="", layer:int=5, fold:int=0, batch_size:int=32, ):
+def prepare_test_data(lst_labels, lst_fold, folder:str="", layer:int=5, fold:int=0, batch_size:int=32, ):
     """
     data preparation
     
@@ -168,33 +158,23 @@ def prepare_data(folder:str="", target:str="", layer:int=5, fold:int=0, batch_si
         data = rnn.pad_sequence(data, batch_first=True, padding_value=0.0)
         label=torch.stack(label, dim=0)
         return data, label
-    # data
-    train_dataset = Dataset_WSI(
+    # Dataset
+    test_dataset = Dataset_WSI_UnderSample_Batch(
+        lst_labels,
+        lst_fold,
         folder=folder,
-        target=target,
-        layer=layer,
         fold=fold,
-        test=False,
-        )
-    test_dataset = Dataset_WSI(
-        folder=folder,
-        target=target,
+        fold2=fold,
         layer=layer,
-        fold=fold,
-        test=True,
+        ratio=None,
     )
     # to loader
-    train_loader = dh.prep_dataloader(
-        train_dataset, batch_size=batch_size,
-        shuffle=True, drop_last=True,
-        collate_fn=collate_fn,
-        )
     test_loader = dh.prep_dataloader(
         test_dataset, batch_size=batch_size,
         shuffle=False, drop_last=False,
         collate_fn=collate_fn,
         )
-    return train_loader, test_loader
+    return test_loader
 
 def prepare_model(patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150, label_smoothing:float=None, weight=None):
     """
@@ -225,23 +205,37 @@ def prepare_model(patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=1
     return model, optimizer, scheduler, early_stopping
 
 # train epoch
-def train_epoch(model, train_loader, optimizer, ):
+def train_epoch(model, optimizer, epoch, lst_train_labels, lst_fold):
     """
     train for epoch
     with minibatch
     """
+    # set batch
+    lst_batch=list(range(5))
+    lst_batch.remove(args.fold)
+    random.seed(args.seed+epoch)
+    random.shuffle(lst_batch)
+    random.seed(args.seed)
     # train
     model.train() # training
     train_batch_loss = []
-    for x, label in train_loader:
-        x = x.to(DEVICE)
-        label = label.to(DEVICE)
-        loss = model.calc_loss(x, label)
-        train_batch_loss.append(loss.item())
-        optimizer.zero_grad() # reset gradients
-        loss.backward() # backpropagation
-        optimizer.step() # update parameters
-    gc.collect()
+    for fold2 in lst_batch:
+        train_loader=prepare_sampling_data(
+            lst_train_labels, lst_fold,
+            folder=args.folder, layer=args.layer, fold=args.fold, fold2=fold2,
+            batch_size=args.batch_size, random_state=args.seed+epoch, 
+            ratio=args.ratio
+            )
+        for x, label in train_loader:
+            x = x.to(DEVICE)
+            label = label.to(DEVICE)
+            loss = model.calc_loss(x, label)
+            train_batch_loss.append(loss.item())
+            optimizer.zero_grad() # reset gradients
+            loss.backward() # backpropagation
+            optimizer.step() # update parameters
+        del x, train_loader
+        gc.collect()
     return model, np.mean(train_batch_loss)
 
 # evaluate
@@ -286,20 +280,21 @@ def train(model, test_loader, optimizer, scheduler, early_stopping, num_epoch:in
     train_loss=list()
     res_test=list()
     # load
-    lst_train_labels=load_train_labels(fold=args.fold, target=args.target)
+    lst_train_labels, lst_fold=load_train_labels(target=args.target)
     for epoch in range(num_epoch):
-        # train
-        train_loader=prepare_sampling_data(
-            lst_train_labels, 
-            folder=args.folder, layer=args.layer, fold=args.fold, 
-            batch_size=args.batch_size, random_state=args.seed+epoch, 
-            ratio=args.ratio)
-        model, train_epoch_loss = train_epoch(model, train_loader, optimizer,)
+        model, train_epoch_loss = train_epoch(model, optimizer, epoch, lst_train_labels, lst_fold)
         scheduler.step()
         train_loss.append(train_epoch_loss)
         # Log
         if (epoch+1)%100==0 and epoch!=0:
+            # inference
+            test_loader = prepare_test_data(
+                lst_train_labels, lst_fold, folder=args.dir_feature, layer=args.layer, fold=args.fold, batch_size=args.batch_size, 
+            )
             auroc, aupr, mAP, acc, ba = evaluate(model, test_loader, )
+            del test_loader
+            gc.collect()
+            # export
             res_test.append([auroc, aupr, mAP, acc, ba])
             LOGGER.logger.info('elapsed_time: {:.2f} min'.format((time.time() - start)/60))
             LOGGER.logger.info(
@@ -325,9 +320,7 @@ def main(resume=False):
     model, optimizer, scheduler, early_stopping = prepare_model(
         patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch, label_smoothihng=args.label_smoothing, weight=args.weight,
     )
-    test_loader = prepare_data(
-        folder=args.dir_feature, target=args.target, layer=args.layer, fold=args.fold, batch_size=args.batch_size, 
-    )[1]
+
     # 2. Training
     model, train_loss = train(
         model, test_loader, 
