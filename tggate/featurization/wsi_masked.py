@@ -286,7 +286,7 @@ def prepare_dataset(filein:str="", filemask:str="", patch_size:int=224, batch_si
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
     data_transform = transforms.Compose([
-        transforms.Resize((224,224)),
+        transforms.Resize((224,224), antialias=True),
         transforms.ToTensor(),
         normalize
     ])
