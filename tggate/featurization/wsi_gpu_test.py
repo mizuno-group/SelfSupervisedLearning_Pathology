@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-# featurize module
+# featurize module with gpu transforms
 
 @author: Katsuhisa MORITA
 """
@@ -20,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
+import torch.multiprocessing as multiprocessing
 from PIL import Image
 import skimage
 
@@ -47,6 +48,8 @@ parser.add_argument('--tggate_all', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
 parser.add_argument('--rat', action='store_true')
+parser.add_argument('--ssd', action='store_true')
+parser.add_argument('--hdd', action='store_true')
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
@@ -66,7 +69,7 @@ class Featurize:
         # featurize
         with torch.inference_mode():
             for data in data_loader:
-                data = data.to(self.DEVICE)
+                #data = data.to(self.DEVICE)
                 outs = self.extraction(model, data)
                 for i, out in enumerate(outs):
                     self.out_all[i].append(out)
@@ -242,6 +245,28 @@ def _load_state_dict_dense(model, weights):
     return model
 
 # DataLoader
+class Transpose:
+    """(W,H,C)→(C,W,H)"""
+    def __init__(self) -> None:
+        return
+    
+    def __call__(self, img):
+        return img.permute(2,0,1)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
+class ToFloat:
+    """to float32"""
+    def __init__(self) -> None:
+        return 
+        
+    def __call__(self, img):
+        return img.to(dtype=torch.float32).div(255)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
 class DatasetWSI(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -250,6 +275,7 @@ class DatasetWSI(torch.utils.data.Dataset):
         transform=None,
         patch_size=224,
         num_patch=None, random_state=24771,
+        DEVICE="",
         ):
         # set transform
         if type(transform)!=list:
@@ -264,6 +290,7 @@ class DatasetWSI(torch.utils.data.Dataset):
             self.lst_location=random.sample(self.lst_location, num_patch)
         self.datanum = len(self.lst_location)
         self.patch_size=patch_size
+        self.DEVICE=DEVICE
 
     def __len__(self):
         return self.datanum
@@ -271,7 +298,7 @@ class DatasetWSI(torch.utils.data.Dataset):
     def __getitem__(self,idx):
         location=self.lst_location[idx]
         out_data=self.wsi[location[0]:location[0]+self.patch_size,location[1]:location[1]+self.patch_size,:]
-        out_data = Image.fromarray(out_data).convert("RGB")
+        out_data=torch.from_numpy(out_data).to(self.DEVICE)
         if self._transform:
             for t in self._transform:
                 out_data = t(out_data)
@@ -286,8 +313,9 @@ def prepare_dataset(filein:str="", filemask:str="", patch_size:int=224, batch_si
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
     data_transform = transforms.Compose([
+        Transpose(),
         transforms.Resize((224,224), antialias=True),
-        transforms.ToTensor(),
+        ToFloat(),
         normalize
     ])
     # data
@@ -297,12 +325,14 @@ def prepare_dataset(filein:str="", filemask:str="", patch_size:int=224, batch_si
         transform=data_transform,
         num_patch=num_patch,
         patch_size=patch_size,
+        DEVICE=DEVICE
         )
     # to loader
     data_loader = sslmodel.data_handler.prep_dataloader(
         dataset, batch_size=batch_size, 
         shuffle=False,
-        drop_last=False)
+        drop_last=False,
+        pin_memory=False)
     return data_loader
 
 ## Featurize Methods
@@ -414,6 +444,18 @@ def main():
         lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
         lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
         lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+
+    if args.hdd:
+        lst_tf=["HDD" in i for i in lst_filein]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
+        lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+    if args.ssd:
+        lst_tf=["SSD" in i for i in lst_filein]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
+        lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+
     # 2. inference & save results
     featurize_layer(
         model_name=args.model_name, ssl_name=args.ssl_name, 
@@ -427,4 +469,7 @@ def main():
 
 if __name__ == '__main__':
     DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
+    if multiprocessing.get_start_method() == 'fork':
+        multiprocessing.set_start_method('spawn', force=True)
+        print("{} setup done".format(multiprocessing.get_start_method()))
     main()

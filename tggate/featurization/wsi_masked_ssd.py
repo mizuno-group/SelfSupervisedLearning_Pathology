@@ -47,6 +47,8 @@ parser.add_argument('--tggate_all', action='store_true')
 parser.add_argument('--eisai', action='store_true')
 parser.add_argument('--shionogi', action='store_true')
 parser.add_argument('--rat', action='store_true')
+parser.add_argument('--ssd', action='store_true')
+parser.add_argument('--hdd', action='store_true')
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
@@ -414,6 +416,18 @@ def main():
         lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
         lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
         lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+
+    if args.hdd:
+        lst_tf=["HDD" in i for i in lst_filein]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
+        lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+    if args.ssd:
+        lst_tf=["SSD" in i for i in lst_filein]
+        lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
+        lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
+        lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+
     # 2. inference & save results
     featurize_layer(
         model_name=args.model_name, ssl_name=args.ssl_name, 

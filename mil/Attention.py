@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.nn.utils.rnn as rnn
 
 class AttentionBase(nn.Module):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None, weight=None):
         super(AttentionBase, self).__init__()
         # parameters
         self.M = n_features
@@ -27,6 +27,8 @@ class AttentionBase(nn.Module):
             nn.Linear(self.M*self.ATTENTION_BRANCHES, n_labels),
             nn.Sigmoid()
         )
+        # criterion
+        self.criterion=nn.BCELoss(weight=weight)
 
     def forward_single(self, X):
         """for single WSI (instances x features)"""
@@ -39,7 +41,7 @@ class AttentionBase(nn.Module):
     def forward_multiwsi(self, X):
         """for Multi WSI (batch x instances x features)"""
         A = self.calc_attention(X, [2,1])  # KxATTENTION_BRANCHES
-        Z = torch.bmm(A, X)  # ATTENTION_BRANCHESxM
+        Z = torch.squeeze(torch.bmm(A, X))  # ATTENTION_BRANCHESxM
         Y_prob = self.classifier(Z)
         Y_hat = (Y_prob>.5).float()
         return Y_prob, Y_hat, A
@@ -56,8 +58,7 @@ class AttentionBase(nn.Module):
         Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
         if self.label_smoothing:
             Y=torch.clamp(Y, min=self.label_smoothing, max=1.-self.label_smoothing,)
-        neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))  # negative log bernoulli
-        return neg_log_likelihood
+        return self.criterion(Y_prob, Y)
 
     def calc_error(self, X, Y):
         Y = Y.float()
@@ -81,7 +82,7 @@ class AttentionBase(nn.Module):
         return torch.squeeze(self.forward(X)[0].detach()).cpu().numpy()
 
 class GatedAttentionBase(nn.Module):
-    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):
+    def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None, weight=None):
         super(GatedAttentionBase, self).__init__()
         # parameters
         self.M = n_features
@@ -103,6 +104,8 @@ class GatedAttentionBase(nn.Module):
             nn.Linear(self.M*self.ATTENTION_BRANCHES, n_labels),
             nn.Sigmoid()
         )
+        # criterion
+        self.criterion=nn.BCELoss(weight=weight)
 
     def forward_single(self, X):
         """for single WSI (instances x features)"""
@@ -115,7 +118,7 @@ class GatedAttentionBase(nn.Module):
     def forward_multiwsi(self, X):
         """for Multi WSI (batch x instances x features)"""
         A = self.calc_attention(X, [2,1])
-        Z = torch.bmm(A, X)  # ATTENTION_BRANCHESxM
+        Z = torch.squeeze(torch.bmm(A, X))  # ATTENTION_BRANCHESxM
         Y_prob = self.classifier(Z)
         Y_hat = (Y_prob>.5).float()
         return Y_prob, Y_hat, A
@@ -134,8 +137,7 @@ class GatedAttentionBase(nn.Module):
         Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
         if self.label_smoothing:
             Y=torch.clamp(Y, min=self.label_smoothing, max=1.-self.label_smoothing,)
-        neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))  # negative log bernoulli
-        return neg_log_likelihood
+        return self.criterion(Y_prob, Y)
 
     def calc_error(self, X, Y):
         Y = Y.float()
