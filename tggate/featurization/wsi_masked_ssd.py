@@ -422,11 +422,13 @@ def main():
         lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
         lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
         lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+        print(len(lst_filein))
     if args.ssd:
         lst_tf=["SSD" in i for i in lst_filein]
         lst_filein=[i for i, v in zip(lst_filein, lst_tf) if v]
         lst_filename=[i for i, v in zip(lst_filename, lst_tf) if v]
         lst_filemask=[i for i, v in zip(lst_filemask, lst_tf) if v]
+        print(len(lst_filein))
 
     # 2. inference & save results
     featurize_layer(
