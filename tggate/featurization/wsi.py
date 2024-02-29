@@ -270,7 +270,7 @@ class DatasetWSI(torch.utils.data.Dataset):
 
     def __getitem__(self,idx):
         out_data=self.wsi.read_region(
-            location=tuple(self.lst_location[idx]),
+            location=tuple(self.lst_location[idx][::-1]),
             level=0,
             size=(self.patch_size, self.patch_size),
             )

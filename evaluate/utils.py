@@ -4,6 +4,7 @@
 
 @author: Katsuhisa MORITA
 """
+import random
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
@@ -12,6 +13,7 @@ import sklearn.metrics as metrics
 from sklearn.manifold import TSNE, MDS
 from sklearn.metrics import pairwise_distances
 from scipy import stats
+from mil.Pooling import PoolingMIL
 
 # file name
 file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"

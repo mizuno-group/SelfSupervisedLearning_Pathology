@@ -14,7 +14,8 @@ from sklearn.linear_model import LogisticRegression, ElasticNet
 from sklearn.svm import SVR
 import lightgbm as lgb
 
-from evaluate import utils, settings
+from evaluate import utils
+import settings
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
@@ -39,7 +40,7 @@ class ClassificationFold:
         layer=0,
         pretrained=False,
         n_fold=5,
-        wsi=False, num_patch=None, streategy="max", random_state=24771,
+        wsi=False, num_patch=None, strategy="max", random_state=24771,
         convertz=True,
         compression=False, n_components=16,
         pred_method="logistic_regression", params=dict(),
