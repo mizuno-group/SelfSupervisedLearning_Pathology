@@ -153,7 +153,7 @@ def plot_violin(
     df = pd.DataFrame(dict(zip(lst_name, lst_values)))
     df_melt=pd.melt(df)
     # violin plot, transparent
-    sns.violinplot(x='variable', y='value', data=df_melt, inner=None, cut=0, scale="count",linewidth=1.5, color="dimgrey")
+    sns.violinplot(x='variable', y='value', data=df_melt, inner=None, cut=0, density_norm="count",linewidth=1.5, color="dimgrey")
     plt.setp(ax.collections, alpha=.55)
     # average line
     for i, v_mean in enumerate(lst_mean):

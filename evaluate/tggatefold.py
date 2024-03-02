@@ -48,6 +48,7 @@ class ClassificationFold:
         moa=False, compound_name=False, #prediction mode/multi class
         lst_features=None,
         finding_base=False,
+        delete_sample=False, lst_delete_conc=["Control", "Low"], #delete control/low conc samples with findings
         ):
         # set
         dict_pred_method={
@@ -56,6 +57,8 @@ class ClassificationFold:
         # load
         if finding:
             self._load_classification(lst_features=lst_features)
+            if delete_sample:
+                self._delete_sample(lst_delete_conc=lst_delete_conc)
         if prognosis:
             self._load_prognosis(lst_features=lst_features)
         if moa:
@@ -143,6 +146,13 @@ class ClassificationFold:
             self.lst_features=lst_features
         else:
             self.lst_features=lst_classification
+
+    def _delete_sample(
+        self,
+        lst_delete_conc=["Control", "Low"],
+        ):
+        s_tf=self.df_info.loc[:,self.lst_features].sum(axis=1)>0 #with at least one finding
+        self.df_info=self.df_info[~((self.df_info["DOSE_LEVEL"].isin(lst_delete_conc))&(s_tf))] # drop true and concentration is control or low sample
 
     def _load_prognosis(
         self,
