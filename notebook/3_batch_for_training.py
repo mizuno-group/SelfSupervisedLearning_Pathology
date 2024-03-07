@@ -23,14 +23,13 @@ import cv2
 sys.path.append(f"{root}/src/SelfSupervisedLearningPathology")
 from tggate.utils import make_patch
 
-# parameters
-patch_size=256
-num_patch=256
-seed=24771
-filein_info=f"{root}/data/tggate_info_ext.csv"
-folder_out="/workspace/HDD2/TGGATEs/WSI/Liver/batchext"
-
 if __name__=="__main__":
+    # parameters
+    patch_size=256
+    num_patch=256
+    seed=24771
+    filein_info=f"{root}/data/tggate_info_ext.csv"
+    folder_out="/workspace/HDD2/TGGATEs/WSI/Liver/batchext"
     # load
     df_all=pd.read_csv(filein_info)
     # set seed

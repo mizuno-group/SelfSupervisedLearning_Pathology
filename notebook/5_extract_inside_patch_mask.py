@@ -35,14 +35,13 @@ def save_mask(filein, fileout, patch_size:int=None, slice_min_patch:int=None,):
 
 if __name__=="__main__":
     # settings
-    lst_patch_size=[224, 448, 896, 1792]
-    lst_min=[1000, 100, 10, 1]
+    lst_patch_size=[224, 448, ]
+    lst_min=[1000, 100, ]
     folder_out="/workspace/HDD3/TGGATEs/mask" # change to your dir
     # load
     df_info=pd.read_csv(f"{root}/data/tggate_info_ext.csv")
     lst_filein=df_info["DIR_temp"].tolist()
-    #for i in range(4):
-    for i in range(1,4):
+    for i in range(2):
         lst_fileout=[f"{folder_out}/{lst_patch_size[i]}/{v}_location.pickle" for v in list(range(df_info.shape[0]))]
         # masked patch
         for filein, fileout in tqdm(zip(lst_filein, lst_fileout)):

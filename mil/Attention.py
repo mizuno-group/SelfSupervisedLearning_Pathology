@@ -79,7 +79,7 @@ class AttentionBase(nn.Module):
         return error, neg_log_likelihood
 
     def predict_proba(self, X):
-        return torch.squeeze(self.forward(X)[0].detach()).cpu().numpy()
+        return torch.squeeze(self.forward(X)[0])
 
 class GatedAttentionBase(nn.Module):
     def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None, weight=None):
@@ -158,7 +158,7 @@ class GatedAttentionBase(nn.Module):
         return error, neg_log_likelihood
         
     def predict_proba(self, X):
-        return torch.squeeze(self.forward(X)[0].detach()).cpu().numpy()
+        return torch.squeeze(self.forward(X)[0])
 
 class AttentionWSI(AttentionBase):
     def __init__(self, n_features:int=512, hidden_layer:int=128, n_labels:int=1, attention_branches:int=1, label_smoothing:float=None,):

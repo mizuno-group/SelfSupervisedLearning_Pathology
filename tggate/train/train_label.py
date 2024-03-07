@@ -34,6 +34,7 @@ sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
 import sslmodel.sslutils as sslutils
+import tggate.utils as utils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')
@@ -61,14 +62,6 @@ parser.add_argument('--solar_plob', type=float, default=0.)
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
-
-DICT_MODEL={
-    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
-    "ConvNextTiny": [torchvision.models.convnext_tiny, 768],
-    "ResNet18": [torchvision.models.resnet18, 512],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888],
-    "DenseNet121": [torchvision.models.densenet121, 1024],
-}
 
 # prepare data
 class Dataset_Batch(torch.utils.data.Dataset):
@@ -187,8 +180,8 @@ def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:f
     """
     # model building with indicated name
     try:
-        encoder = DICT_MODEL[model_name][0](weights=None)
-        size=DICT_MODEL[model_name][1]
+        encoder = utils.DICT_MODEL[model_name][0](weights=None)
+        size=utils.DICT_MODEL[model_name][1]
     except:
         print("indicated model name is not implemented")
         ValueError
@@ -229,8 +222,8 @@ def load_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:floa
     state = torch.load(f'{DIR_NAME}/state.pt')
     # model building with indicated name
     try:
-        encoder = DICT_MODEL[model_name][0](weights=None)
-        size=DICT_MODEL[model_name][1]
+        encoder = utils.DICT_MODEL[model_name][0](weights=None)
+        size=utils.DICT_MODEL[model_name][1]
     except:
         print("indicated model name is not implemented")
         ValueError

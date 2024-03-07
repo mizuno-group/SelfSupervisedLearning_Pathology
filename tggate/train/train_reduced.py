@@ -36,6 +36,7 @@ sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
 import sslmodel.sslutils as sslutils
+import tggate.utils as utils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')
@@ -44,7 +45,7 @@ parser.add_argument('--note', type=str, help='barlowtwins running')
 parser.add_argument('--seed', type=int, default=0)
 # data settings
 parser.add_argument('--fold', type=int, default=0) # number of fold
-parser.add_argument('--number', type=int, default=100) # number of WSI
+parser.add_argument('--num_wsi', type=int, default=100) # number of WSI
 parser.add_argument('--dir_result', type=str, help='result')
 # model/learning settings
 parser.add_argument('--model_name', type=str, default='ResNet18') # model architecture name
@@ -55,7 +56,6 @@ parser.add_argument('--lr', type=float, default=0.01) # learning rate
 parser.add_argument('--patience', type=int, default=3) # early stopping
 parser.add_argument('--delta', type=float, default=0.002) # early stopping
 parser.add_argument('--resume_epoch', type=int, default=20) # max repeat epoch for one run
-parser.add_argument('--resize', action='store_true') # resize for test flag
 parser.add_argument('--resume', action='store_true') # resuming or not
 # Transform (augmentation) settings
 parser.add_argument('--color_plob', type=float, default=0.8)
@@ -65,27 +65,13 @@ parser.add_argument('--solar_plob', type=float, default=0.)
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
 
-DICT_MODEL={
-    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
-    "ConvNextTiny": [torchvision.models.convnext_tiny, 768],
-    "ResNet18": [torchvision.models.resnet18, 512],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888],
-    "DenseNet121": [torchvision.models.densenet121, 1024],
-}
-DICT_SSL={
-    "barlowtwins":sslutils.BarlowTwins,
-    "swav":sslutils.SwaV,
-    "byol":sslutils.Byol,
-    "simsiam":sslutils.SimSiam,
-}
-
 # prepare data
 class Dataset_Batch(torch.utils.data.Dataset):
     """ load for each version """
     def __init__(self,
                 batch_number:int=None,
                 transform=None,
-                wsi_number="",
+                num_wsi="",
                 fold:int=None,
                 ):
         # set transform
@@ -94,7 +80,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
         else:
             self._transform = transform
         # load data
-        with open(f"/work/gd43/share/tggates/liver/reduced/{wsi_number}/fold{fold}/batch_{batch_number}.npy", 'rb') as f:
+        with open(f"/work/gd43/share/tggates/liver/batch_small/{num_wsi}/fold{fold}_batch{batch_number}.npy", 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
         gc.collect()
@@ -122,7 +108,7 @@ def prepare_data(batch_number:int=0, wsi_number:int=0, batch_size:int=32, fold:i
     # data
     train_dataset = Dataset_Batch(
         batch_number=batch_number,
-        wsi_number=wsi_number,
+        num_wsi=num_wsi,
         transform=train_transform,
         fold=fold,
         )
@@ -133,95 +119,6 @@ def prepare_data(batch_number:int=0, wsi_number:int=0, batch_size:int=32, fold:i
     train_loader = dh.prep_dataloader(train_dataset, batch_size)
     return train_loader
 
-def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150):
-    """
-    preparation of models
-    Parameters
-    ----------
-        model_name (str)
-            model architecture name
-        
-        patience (int)
-            How long to wait after last time validation loss improved.
-
-        delta (float)
-            Minimum change in the monitored quantity to qualify as an improvement.
-
-    """
-    # model building with indicated name
-    try:
-        encoder = DICT_MODEL[model_name][0](weights=None)
-        size=DICT_MODEL[model_name][1]
-    except:
-        print("indicated model name is not implemented")
-        ValueError
-    if model_name=="DenseNet121":
-        backbone = nn.Sequential(
-            *list(encoder.children())[:-1],
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1))
-            )
-    else:
-        backbone = nn.Sequential(
-            *list(encoder.children())[:-1],
-            )
-    model, criterion = ssl_class.prepare_model(backbone, head_size=size)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epoch, eta_min=0
-        )
-    early_stopping = sslmodel.utils.EarlyStopping(patience=patience, delta=delta, path=f'{DIR_NAME}/checkpoint.pt')
-    return model, criterion, optimizer, scheduler, early_stopping
-
-# prepare model
-def load_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150):
-    """
-    preparation of models
-    Parameters
-    ----------
-        model_name (str)
-            model architecture name
-        
-        patience (int)
-            How long to wait after last time validation loss improved.
-
-        delta (float)
-            Minimum change in the monitored quantity to qualify as an improvement.
-
-    """
-    # load
-    state = torch.load(f'{DIR_NAME}/state.pt')
-    # model building with indicated name
-    try:
-        encoder = DICT_MODEL[model_name][0](weights=None)
-        size=DICT_MODEL[model_name][1]
-    except:
-        print("indicated model name is not implemented")
-        ValueError
-    if model_name=="DenseNet121":
-        backbone = nn.Sequential(
-            *list(encoder.children())[:-1],
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1))
-            )
-    else:
-        backbone = nn.Sequential(
-            *list(encoder.children())[:-1],
-            )
-    model, criterion = ssl_class.prepare_model(backbone, head_size=size)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epoch, eta_min=0
-        )
-    epoch=state['epoch']
-    model.load_state_dict(state['model_state_dict'])
-    optimizer.load_state_dict(state['optimizer_state_dict'])
-    scheduler.load_state_dict(state['scheduler_state_dict'])
-    criterion = state['criterion']
-    early_stopping = state['early_stopping']
-    train_loss=state['train_loss']
-    return model, criterion, optimizer, scheduler, early_stopping, train_loss, epoch
-
 # train epoch
 def train_epoch(model, criterion, optimizer, epoch):
     """
@@ -231,18 +128,15 @@ def train_epoch(model, criterion, optimizer, epoch):
     model.train() # training
     train_batch_loss = []
     # define loader
-    if args.resize:
-        minibatch_lst=[0]
-    else:
-        dict_batch={
-            100:1,
-            200:1,
-            500:2,
-            1000:4,
-            2000:8,
-            3000:12,
-        }
-        minibatch_lst=list(range(dict_batch.get(args.number)))
+    dict_batch={
+        64:1,
+        256:1,
+        1024:1,
+        4096:4,
+    }
+    lst_fold=list(range(5))
+    lst_fold.remove(args.fold)
+    lst_minibatch=[[i,v] for i in lst_fold for v in range(dict_batch[args.number])]
     random.seed(args.seed+epoch)
     random.shuffle(minibatch_lst)
     random.seed(args.seed)
@@ -303,13 +197,17 @@ def train(model, criterion, optimizer, scheduler, early_stopping, num_epoch:int=
 def main(resume=False):
     # 1. Preparing
     if resume:
-        model, criterion, optimizer, scheduler, early_stopping, train_loss, epoch = load_model(
-            model_name=args.model_name, patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch
+        model, criterion, optimizer, scheduler, early_stopping, train_loss, epoch = utils.load_model_train(
+            model_name=args.model_name, ssl_name=args.ssl_name,
+            patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch,
+            DIR_NAME=DIR_NAME, DEVICE=DEVICE
         )
         epoch_start=epoch+1
     else:
-        model, criterion, optimizer, scheduler, early_stopping = prepare_model(
-            model_name=args.model_name, patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch
+        model, criterion, optimizer, scheduler, early_stopping = utils.prepare_model_train(
+            model_name=args.model_name, ssl_name=args.ssl_name,
+            patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch,
+            DEVICE=DEVICE,
         )
         epoch_start=0
         train_loss=[]
@@ -338,21 +236,20 @@ if __name__ == '__main__':
     filename = os.path.basename(__file__).split('.')[0]
     DIR_NAME = PROJECT_PATH + '/result/' +args.dir_result # for output
     file_log = f'{DIR_NAME}/logger.pkl'
+    now = datetime.datetime.now().strftime('%H%M%S')
     DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
     # Set SSL class
-    ssl_class=DICT_SSL[args.ssl_name](DEVICE=DEVICE)
+    ssl_class=utils.DICT_SSL[args.ssl_name](DEVICE=DEVICE)
     if args.resume:
         if not os.path.exists(file_log):
             print("log file doesnt exist")
         LOGGER = sslmodel.utils.logger_save()
         LOGGER.load_logger(filein=file_log)
-        LOGGER.logger.info(f"resume: {datetime.datetime.now().strftime('%Y%m%d%H%M%S')}")
+        LOGGER.logger.info(f"resume: {now}")
         main(resume=True)
     else:
         if not os.path.exists(DIR_NAME):
             os.makedirs(DIR_NAME)
-        now = datetime.datetime.now().strftime('%H%M%S')
         LOGGER = sslmodel.utils.logger_save()
         LOGGER.init_logger(filename, DIR_NAME, now, level_console='debug') 
-        DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
         main(resume=False)

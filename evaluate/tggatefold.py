@@ -152,7 +152,7 @@ class ClassificationFold:
         lst_delete_conc=["Control", "Low"],
         ):
         s_tf=self.df_info.loc[:,self.lst_features].sum(axis=1)>0 #with at least one finding
-        self.df_info=self.df_info[~((self.df_info["DOSE_LEVEL"].isin(lst_delete_conc))&(s_tf))] # drop true and concentration is control or low sample
+        self.df_info=self.df_info[~((self.df_info["DOSE_LEVEL"].isin(lst_delete_conc))&(s_tf))] # drop true and concentration is (control or low sample)
 
     def _load_prognosis(
         self,
