@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import datetime
+import random
 from typing import List, Tuple, Union, Sequence
 
 import numpy as np
@@ -28,24 +29,6 @@ except:
 
 import sslmodel
 import sslmodel.sslutils as sslutils
-
-## Featurize Methods
-# name: [Model_Class, last_layer_size, Featurize_Class]
-DICT_MODEL = {
-    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536, EfficientNetB3Featurize],
-    "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
-    "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888, RegNetY16gfFeaturize],
-    "DenseNet121": [torchvision.models.densenet121, 1024, DenseNet121Featurize],
-}
-## Model architecture
-DICT_SSL={
-    "barlowtwins":sslutils.BarlowTwins,
-    "swav":sslutils.SwaV,
-    "byol":sslutils.Byol,
-    "simsiam":sslutils.SimSiam,
-    "wsl":sslutils.WSL,
-}
 
 # Featurize Class
 class Featurize:
@@ -218,6 +201,24 @@ class RegNetY16gfFeaturize(Featurize):
         x = model[1][3](x)
         x5 = torch.flatten(model[2](x), 1).detach().cpu().numpy().reshape(-1,888)
         return x1, x2, x3, x4, x5
+
+## Featurize Methods
+# name: [Model_Class, last_layer_size, Featurize_Class]
+DICT_MODEL = {
+    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536, EfficientNetB3Featurize],
+    "ConvNextTiny": [torchvision.models.convnext_tiny, 768, ConvNextTinyFeaturize],
+    "ResNet18": [torchvision.models.resnet18, 512, ResNet18Featurize],
+    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888, RegNetY16gfFeaturize],
+    "DenseNet121": [torchvision.models.densenet121, 1024, DenseNet121Featurize],
+}
+## Model architecture
+DICT_SSL={
+    "barlowtwins":sslutils.BarlowTwins,
+    "swav":sslutils.SwaV,
+    "byol":sslutils.Byol,
+    "simsiam":sslutils.SimSiam,
+    "wsl":sslutils.WSL,
+}
 
 def _load_state_dict_dense(model, weights):
     # '.'s are no longer allowed in module names, but previous _DenseLayer
@@ -407,7 +408,7 @@ def make_patch(filein:str="", patch_size:int=256, num_patch:int=512, random_stat
             level=0,
             size=(patch_size, patch_size))
         ap(np.array(patch_image, np.uint8)[:,:,:3])
-    res=np.concatenate(res).astype(np.uint8)
+    res=np.stack(res).astype(np.uint8)
     return res, lst_number
 
 def get_patch_mask(image, patch_size, threshold=None,):
