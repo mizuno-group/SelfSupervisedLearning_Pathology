@@ -5,8 +5,22 @@ Max Plooling and Logistic Regression for MIL
 import random
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
-from tggate.utils import standardize
+def standardize(x_train, x_test=None, train_only=False):
+    """ standardize / fillna with 0 """
+    ss = StandardScaler()
+    if train_only:
+        x_train = ss.fit_transform(x_train)
+        x_train[np.isnan(x_train)]=0
+        return x_train
+    else:
+        ss.fit(x_train)
+        x_train = ss.transform(x_train)
+        x_train[np.isnan(x_train)]=0
+        x_test = ss.transform(x_test)
+        x_test[np.isnan(x_test)]=0
+        return x_train, x_test
 
 class PoolingMIL:
     def __init__(self, strategy="max", random_state:int=24771):
@@ -22,8 +36,8 @@ class PoolingMIL:
         self.logistic_model=None
         random.seed(random_state)
 
-    def pooing_data(self, X, num_patch:int=None):
-        self.data.append(self.pooling(X, num_patch=num_patch))
+    def pooling_data(self, X, num_patch:int=None):
+        self.data.append(self._pooling(X, num_patch=num_patch))
 
     def set_train_data(self, X=[], ):
         if len(X)==0:
@@ -39,11 +53,13 @@ class PoolingMIL:
         else:
             self.test_data=X
 
-    def save_model(self, model_path=""):
-        pd.to_pickle(np.concatenate([
-            self.logistic_model.coef_,
-            self.logistic_model.intercept_,]),
-            model_path)
+    def save_model(self, folder=None, name=None, ):
+        if name:
+            temp=f"{folder}/{name}_"
+        else:
+            temp=f"{folder}/"
+        np.save(f"{temp}coef.npy", self.logistic_model.coef_)
+        np.save(f"{temp}intercept.npy", self.logistic_model.intercept_)
 
     def predict(self, x_train=None, x_test=None, y_train=None, params=dict(), convertz=False,):
         if not x_train:

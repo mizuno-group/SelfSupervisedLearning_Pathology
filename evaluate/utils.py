@@ -4,6 +4,7 @@
 
 @author: Katsuhisa MORITA
 """
+import random
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
@@ -12,12 +13,14 @@ import sklearn.metrics as metrics
 from sklearn.manifold import TSNE, MDS
 from sklearn.metrics import pairwise_distances
 from scipy import stats
+from mil.Pooling import PoolingMIL
 
+import settings
 # file name
-file_tggate_info="/workspace/230727_pharm/data/processed/tggate_info.csv"
-file_eisai_info="/workspace/230727_pharm/data/processed/eisai_info.csv"
-file_shionogi_info="/workspace/230727_pharm/data/processed/shionogi_info.csv"
-file_rat_info="/workspace/231006_lab/data/our_info.csv"
+file_tggate_info=settings.file_tggate
+file_eisai_info=settings.file_eisai
+file_shionogi_info=settings.file_shionogi
+file_rat_info=settings.file_our
 file_mouse_info="/workspace/231114_mouse_DILI/data/mouse_info.csv"
 
 def standardize(x_train, x_test=None, train_only=False):
@@ -107,7 +110,7 @@ def load_array_fold_wsi(
     ind_test=df_info[df_info["FOLD"]==fold]["INDEX"].tolist()
     if pretrained:
         lst_train=[f"{folder}/pretrained_{i}_{name}{layer}.npy" for i in ind_train]
-        lst_test=[f"{folder}/pretrained_{i}_{name}{layer}.npy" for i in ind_train]
+        lst_test=[f"{folder}/pretrained_{i}_{name}{layer}.npy" for i in ind_test]
     else:
         lst_train=[f"{folder}/fold{fold}_{i}_{name}{layer}.npy" for i in ind_train]
         lst_test=[f"{folder}/fold{fold}_{i}_{name}{layer}.npy" for i in ind_test]

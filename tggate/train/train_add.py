@@ -37,6 +37,7 @@ sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")
 import sslmodel
 from sslmodel import data_handler as dh
 import sslmodel.sslutils as sslutils
+import tggate.utils as utils
 
 # argument
 parser = argparse.ArgumentParser(description='CLI learning')
@@ -69,20 +70,6 @@ parser.add_argument('--warmup_lr_init', type=float, default=1e-5)
 
 args = parser.parse_args()
 sslmodel.utils.fix_seed(seed=args.seed, fix_gpu=True) # for seed control
-
-DICT_MODEL={
-    "EfficientNetB3": [torchvision.models.efficientnet_b3, 1536],
-    "ConvNextTiny": [torchvision.models.convnext_tiny, 768],
-    "ResNet18": [torchvision.models.resnet18, 512],
-    "RegNetY16gf": [torchvision.models.regnet_y_1_6gf, 888],
-    "DenseNet121": [torchvision.models.densenet121, 1024],
-}
-DICT_SSL={
-    "barlowtwins":sslutils.BarlowTwins,
-    "swav":sslutils.SwaV,
-    "byol":sslutils.Byol,
-    "simsiam":sslutils.SimSiam,
-}
 
 # prepare data
 class Dataset_Batch(torch.utils.data.Dataset):
@@ -135,7 +122,8 @@ def prepare_data(batch_size:int=32):
     return train_loader
 
 # prepare model
-def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150):
+def prepare_model(
+        model_name:str='ResNet18', patience:int=7, delta:float=0, lr:float=0.003, num_epoch:int=150):
     """
     preparation of models
     Parameters
@@ -152,8 +140,8 @@ def prepare_model(model_name:str='ResNet18', patience:int=7, delta:float=0, lr:f
     """
     # model building with indicated name
     try:
-        encoder = DICT_MODEL[model_name][0](weights=None)
-        size=DICT_MODEL[model_name][1]
+        encoder = utils.DICT_MODEL[model_name][0](weights=None)
+        size=utils.DICT_MODEL[model_name][1]
     except:
         print("indicated model name is not implemented")
         ValueError
@@ -196,13 +184,14 @@ def train_epoch(model, data_loader, criterion, optimizer, epoch):
     return model, np.mean(train_batch_loss)
 
 # train
-def train(model, criterion, optimizer, scheduler, early_stopping, num_epoch:int=100, epoch_start:int=0, train_loss=list()):
+def train(model, criterion, optimizer, scheduler, early_stopping, num_epoch:int=100, ):
     """ train ssl model """
     # settings
     start = time.time() # for time stamp
     # prep data
     train_loader=prepare_data(batch_size=args.batch_size)
-    for epoch in range(epoch_start, num_epoch):
+    train_loss=list()
+    for epoch in range(num_epoch):
         # train
         model, train_epoch_loss = train_epoch(model, train_loader, criterion, optimizer, epoch)
         scheduler.step(epoch)
@@ -238,7 +227,7 @@ def main():
         model_name=args.model_name, patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch
     )
     model, train_loss, flag_finish = train(
-        model, criterion, optimizer, scheduler, early_stopping, num_epoch=args.num_epoch, epoch_start=0, train_loss=[],
+        model, criterion, optimizer, scheduler, early_stopping, num_epoch=args.num_epoch, 
     )        
     if flag_finish:
         sslmodel.plot.plot_progress_train(train_loss, DIR_NAME)
@@ -268,5 +257,5 @@ if __name__ == '__main__':
     LOGGER.init_logger(filename, DIR_NAME, now, level_console='debug') 
     DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
     # Set SSL class
-    ssl_class=DICT_SSL[args.ssl_name](DEVICE=DEVICE)
+    ssl_class=utils.DICT_SSL[args.ssl_name](DEVICE=DEVICE)
     main()

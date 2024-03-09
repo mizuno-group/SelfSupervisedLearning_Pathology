@@ -58,14 +58,21 @@ lst_moa=[
     'Bacterial 70S ribosome inhibitor',
     'DNA inhibitor',
     'Histamine H2 receptor antagonist']
+
+WISTERIA=True
+if WISTERIA:
+    folder_data="/workspace/tggate/data"
+else:
+    folder_data="/work/gd43/a97001/data/info"
+    
 # file names
-file_all="/workspace/tggate/data/tggate_info_ext.csv"
-file_classification="/workspace/tggate/data/processed/finding.csv"
-file_prognosis="/workspace/tggate/data/processed/prognosis.csv"
-file_moa="/workspace/tggate/data/processed/moa.csv"
+file_all=f"{folder_data}/tggate_info_ext.csv"
+file_classification=f"{folder_data}/processed/finding.csv"
+file_prognosis=f"{folder_data}/processed/prognosis.csv"
+file_moa=f"{folder_data}/processed/moa.csv"
 
 # for the evaluation of other centers
-file_tggate="/workspace/tggate/data/tggate_info.csv"
-file_eisai="/workspace/tggate/data/eisai_info.csv"
-file_shionogi="/workspace/tggate/data/shionogi_info.csv"
-file_our="/workspace/tggate/data/our_info.csv"
+file_tggate=f"{folder_data}/tggate_info.csv"
+file_eisai=f"{folder_data}/eisai_info.csv"
+file_shionogi=f"{folder_data}/shionogi_info.csv"
+file_our=f"{folder_data}/our_info.csv"
