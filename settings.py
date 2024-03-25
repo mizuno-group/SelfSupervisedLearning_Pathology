@@ -67,11 +67,11 @@ lst_moa=[
     'DNA inhibitor',
     'Histamine H2 receptor antagonist']
 
-WISTERIA=True
+WISTERIA=False
 if WISTERIA:
-    folder_data="/workspace/tggate/data"
-else:
     folder_data="/work/gd43/a97001/data/info"
+else:
+    folder_data="/workspace/tggate/data"
     
 # file names
 file_all=f"{folder_data}/tggate_info_ext.csv"

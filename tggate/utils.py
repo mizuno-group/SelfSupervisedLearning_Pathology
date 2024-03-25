@@ -54,7 +54,7 @@ class Featurize:
         """max pooling"""
         for i, out in enumerate(self.out_all):
             self.out_all_pool[i].append(
-                np.max(out.reshape(-1, num_pool_patch, self.lst_size[i]),axis=1)
+                np.max(np.concatenate(out).reshape(-1, num_pool_patch, self.lst_size[i]),axis=1)
                 )
         # reset output list
         self.out_all=[[] for size in self.lst_size]

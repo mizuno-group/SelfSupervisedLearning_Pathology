@@ -349,7 +349,38 @@ def calc_stats(y_true, y_pred, lst_compounds, le):
     mAP = metrics.average_precision_score(y_true, y_pred, average="micro")
     return df_res.T, acc, ba, auroc, mAP
 
-def calc_stats_multilabel(y_true, y_pred, lst_features):
+def calc_stats_multilabel(y_true, y_pred, lst_features, drop=False):
+    """ finding classification (multi label)"""
+    # Macro Indicators
+    lst_res=[]
+    for i in range(len(lst_features)):
+        if drop:
+            y_true_temp=y_true[i]
+            y_pred_temp=y_pred[i]
+        else:
+            y_true_temp=y_true[:,i]
+            y_pred_temp=y_pred[:,i]
+        if y_true_temp.sum()==0:
+            lst_res.append([np.nan]*5)
+        else:
+            auroc = metrics.roc_auc_score(y_true_temp, y_pred_temp)
+            precision, recall, thresholds = metrics.precision_recall_curve(y_true_temp, y_pred_temp)
+            aupr = metrics.auc(recall, precision)
+            mAP = metrics.average_precision_score(y_true_temp, y_pred_temp)
+            y_pred_temp=[np.rint(i) for i in y_pred_temp]
+            acc = metrics.accuracy_score(y_true_temp, y_pred_temp)
+            ba = metrics.balanced_accuracy_score(y_true_temp, y_pred_temp)
+            lst_res.append([auroc, aupr, mAP, acc, ba,])
+    df_res=pd.DataFrame(
+        lst_res, 
+        index=lst_features,
+        columns=["AUROC","AUPR","mAP","Accuracy","Balanced Accuracy"]
+        )
+    # Micro Indicators
+    # not implemented
+    return df_res
+
+def calc_stats_multilabel_drop(y_true, y_pred, lst_features):
     """ finding classification (multi label)"""
     # Macro Indicators
     lst_res=[]

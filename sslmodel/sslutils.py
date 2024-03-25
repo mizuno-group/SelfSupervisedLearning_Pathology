@@ -85,7 +85,7 @@ class Byol:
             )
         return train_transform
 
-    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, projection_hidden_size:int=4096):
+    def prepare_featurize_model(self, backbone, model_path:str="", head_size:int=512, projection_hidden_size:int=2048):
         """return backbone model"""
         model = byol.BYOL(
             backbone, image_size=224, 

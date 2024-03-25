@@ -49,6 +49,8 @@ class ClassificationFold:
         lst_features=None,
         finding_base=False,
         delete_sample=False, lst_delete_conc=["Control", "Low"], #delete control/low conc samples with findings
+        drop_injured_sample_train=False, 
+        drop_injured_sample_test=False, 
         ):
         # set
         dict_pred_method={
@@ -100,11 +102,19 @@ class ClassificationFold:
             if finding or prognosis:
                 if pred_method=="constant":
                     y_pred=arr_x_test
+                    res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features)
                 else:
-                    y_pred = self._predict_multilabel(
-                        arr_x_train, arr_x_test, y_train, 
-                        params, dict_pred_method[pred_method])
-                res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features)
+                    if drop_injured_sample_train or drop_injured_sample_test:
+                        y_pred, y_test = self._predict_multilabel_drop(
+                            arr_x_train, arr_x_test, y_train, y_test,
+                            params, dict_pred_method[pred_method], train=drop_injured_sample_train, test=drop_injured_sample_test)
+                        res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features, drop=True)
+                    else:
+                        y_pred = self._predict_multilabel(
+                            arr_x_train, arr_x_test, y_train, 
+                            params, dict_pred_method[pred_method])
+                    res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features, drop=drop_injured_sample_train or drop_injured_sample_test)
+                    
             elif moa or compound_name:
                 y_pred = self._predict_multiclass(
                     arr_x_train, arr_x_test, y_train, 
@@ -122,6 +132,27 @@ class ClassificationFold:
             y_pred_all.append(y_pred)
         y_pred_all=np.stack(y_pred_all).T
         return y_pred_all
+
+    def _predict_multilabel_drop(self, x_train, x_test, y_train, x_test, params, pred, train=False, test=False):
+        """prediction with logistic regression for multi label task"""
+        y_pred_all=[]
+        y_test_all=[]
+        # for loop for one feature
+        for i in range(y_train.shape[1]):
+            if train:
+                ind_eval = (y_train[:,i]>0)|(y_train.sum(axis=1)==0)
+                x_train_temp, y_train_temp=x_train[ind_eval], y_train[ind_eval]
+            else:
+                x_train_temp, y_train_temp=x_train, y_train
+            if test:
+                ind_eval = (y_test[:,i]>0)|(y_test.sum(axis=1)==0)
+                x_test_temp, y_test_temp=x_test[ind_eval], y_test[ind_eval]
+            else:
+                x_test_temp, y_test_temp=x_test, y_test
+            y_pred = pred(x_train_temp, x_test_temp, y_train_temp, params)
+            y_pred_all.append(y_pred)
+            y_test_all.appedn(y_test_temp)
+        return y_pred_all, y_test_all
 
     def _predict_multiclass(self, x_train, x_test, y_train, params):
         """prediction with logistic regression for one label, multi class task"""
@@ -153,6 +184,20 @@ class ClassificationFold:
         ):
         s_tf=self.df_info.loc[:,self.lst_features].sum(axis=1)>0 #with at least one finding
         self.df_info=self.df_info[~((self.df_info["DOSE_LEVEL"].isin(lst_delete_conc))&(s_tf))] # drop true and concentration is (control or low sample)
+
+    def _drop_injured_sample(
+        arr_x_train, arr_x_test, y_train, y_test,
+        fold:int=0,
+        ):
+        df_info_train=self.df_info[self.df_info["FOLD"]!=fold]
+        df_info_train.index=df_info_train["INDEX"].tolist()
+        df_info_test=self.df_info[self.df_info["FOLD"]!=fold]
+        df_info_test.index=df_info_test["INDEX"].tolist()
+        if train:
+            df_temp=df_info_train[:,lst_features]
+
+        return 
+
 
     def _load_prognosis(
         self,
