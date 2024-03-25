@@ -1,27 +1,35 @@
 ## feature names
+#lst_findings=[
+#    'Change, basophilic',
+#    'Change, acidophilic',
+#    'Fibrosis',
+#    'Ground glass appearance',
+#    'Degeneration, hydropic',
+#    'Cellular infiltration, mononuclear cell',
+#    'Microgranuloma',
+#    'Increased mitosis',
+#    'Single cell necrosis',
+#    'Swelling',
+#    'Hypertrophy',
+#    'Inclusion body, intracytoplasmic',
+#    'Change, eosinophilic',
+#    'Proliferation, Kupffer cell',
+#    'Cellular infiltration',
+#    'Degeneration, fatty',
+#    'Vacuolization, cytoplasmic',
+#    'Anisonucleosis',
+#    'Degeneration, granular, eosinophilic',
+#    'Hematopoiesis, extramedullary',
+#    'Necrosis',
+#    'Proliferation, bile duct']
 lst_findings=[
-    'Change, basophilic',
-    'Change, acidophilic',
-    'Fibrosis',
-    'Ground glass appearance',
-    'Degeneration, hydropic',
-    'Cellular infiltration, mononuclear cell',
-    'Microgranuloma',
-    'Increased mitosis',
-    'Single cell necrosis',
-    'Swelling',
-    'Hypertrophy',
-    'Inclusion body, intracytoplasmic',
-    'Change, eosinophilic',
-    'Proliferation, Kupffer cell',
-    'Cellular infiltration',
-    'Degeneration, fatty',
-    'Vacuolization, cytoplasmic',
-    'Anisonucleosis',
-    'Degeneration, granular, eosinophilic',
-    'Hematopoiesis, extramedullary',
-    'Necrosis',
-    'Proliferation, bile duct']
+    'Hepatocellular Degeneration',
+    'Hepatocellular Injury, and Death',
+    'Billary Change',
+    'Hepatocellular Responses',
+    'Inflammation',
+    'Proliferative Lesions',
+]
 lst_compounds=[
     'lomustine',
     'sulindac',
@@ -67,7 +75,7 @@ else:
     
 # file names
 file_all=f"{folder_data}/tggate_info_ext.csv"
-file_classification=f"{folder_data}/processed/finding.csv"
+file_classification=f"{folder_data}/processed/finding_converted.csv"
 file_prognosis=f"{folder_data}/processed/prognosis.csv"
 file_moa=f"{folder_data}/processed/moa.csv"
 
