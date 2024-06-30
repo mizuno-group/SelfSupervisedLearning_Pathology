@@ -18,6 +18,7 @@ from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from PIL import ImageOps, Image
@@ -500,7 +501,7 @@ def sampling_patch_from_wsi(patch_number:int=200, all_number:int=2000, len_df:in
 def check_file(str_file):
     """check input file can be opened or can't"""
     try:
-        temp = openslide.OpenSlide(str_file)
+        temp = OpenSlide(str_file)
         print("OK")
     except:
         print("can't open")

@@ -71,7 +71,7 @@ WISTERIA=False
 if WISTERIA:
     folder_data="/work/gd43/a97001/data/info"
 else:
-    folder_data="/workspace/tggate/data"
+    folder_data="/workspace/pathology/data"
     
 # file names
 file_all=f"{folder_data}/tggate_info_ext.csv"

@@ -349,11 +349,37 @@ def calc_stats(y_true, y_pred, lst_compounds, le):
     mAP = metrics.average_precision_score(y_true, y_pred, average="micro")
     return df_res.T, acc, ba, auroc, mAP
 
-def calc_stats_multilabel(y_true, y_pred, lst_features, drop=False):
+def conv_features_upper(df_true, df_pred, dict_name=dict()):
+    """
+    conversion finding names to upper
+    df: samples x feature
+    dict_name: {feature: upper_feature}
+    """
+    df_true=df_true.T
+    df_pred=df_pred.T
+    df_true["upper"]=[dict_name.get(i, i) for i in df_true.index]
+    df_pred["upper"]=[dict_name.get(i, i) for i in df_pred.index]
+    df_true=df_true.groupby(by="upper",).max()
+    df_pred=df_pred.groupby(by="upper",).max()
+    lst_names=df_true.index.tolist()
+    df_pred=df_pred.loc[lst_names,:]
+    return df_true.T.values, df_pred.T.values, lst_names
+
+def calc_stats_multilabel(y_true, y_pred, lst_features, drop=False, eval_with_conversion_dict=None):
     """ finding classification (multi label)"""
+    # evaluate with name conversion (upper findings)
+    if bool(eval_with_conversion_dict) & (not drop):
+        y_true, y_pred, lst_names=conv_features_upper(
+            pd.DataFrame(y_true, columns=lst_features), 
+            pd.DataFrame(y_pred, columns=lst_features), 
+            dict_name=eval_with_conversion_dict)
+    elif drop & bool(eval_with_conversion_dict):
+        print("Caution: eval_with_conversion doeesnt work because drop_samples=True")
+    else:
+        lst_names=lst_features
     # Macro Indicators
     lst_res=[]
-    for i in range(len(lst_features)):
+    for i in range(len(lst_names)):
         if drop:
             y_true_temp=y_true[i]
             y_pred_temp=y_pred[i]
@@ -373,7 +399,7 @@ def calc_stats_multilabel(y_true, y_pred, lst_features, drop=False):
             lst_res.append([auroc, aupr, mAP, acc, ba,])
     df_res=pd.DataFrame(
         lst_res, 
-        index=lst_features,
+        index=lst_names,
         columns=["AUROC","AUPR","mAP","Accuracy","Balanced Accuracy"]
         )
     # Micro Indicators
