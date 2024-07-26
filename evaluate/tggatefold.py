@@ -29,6 +29,13 @@ file_classification=settings.file_classification
 file_prognosis=settings.file_prognosis
 file_moa=settings.file_moa
 
+def load_conversion_dict(dir_data="", category="Category1"):
+    # load conversion dict
+    df=pd.read_csv(f"{dir_data}/240313_finding_table.csv")
+    df=df.replace("-",np.nan).dropna(subset=["Open TG-GATEs",category])
+    dict_name=dict(zip(df["Open TG-GATEs"],df[category]))
+    return dict_name
+
 class ClassificationFold:
     def __init__(self):
         self.df_info=None
@@ -51,6 +58,7 @@ class ClassificationFold:
         delete_sample=False, lst_delete_conc=["Control", "Low"], #delete control/low conc samples with findings
         drop_injured_sample_train=False, 
         drop_injured_sample_test=False, 
+        train_with_conversion_dict=None,
         eval_with_conversion_dict=None,
         file_classification=file_classification# for analysis
         ):
@@ -62,7 +70,10 @@ class ClassificationFold:
         }
         # load
         if finding:
-            self._load_classification(filein=file_classification, lst_features=lst_features)
+            self._load_classification(
+                filein=file_classification, 
+                lst_features=lst_features, 
+                train_with_conversion_dict=train_with_conversion_dict)
             if delete_sample:
                 self._delete_sample(lst_delete_conc=lst_delete_conc)
         if prognosis:
@@ -106,7 +117,7 @@ class ClassificationFold:
             if finding or prognosis:
                 if pred_method=="constant":
                     y_pred=arr_x_test
-                    res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features, eval_with_conversion=eval_with_conversion)
+                    res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features, eval_with_conversion_dict=eval_with_conversion_dict)
                 else:
                     if drop_injured_sample_train or drop_injured_sample_test:
                         y_pred, y_test = self._predict_multilabel_drop(
@@ -193,13 +204,25 @@ class ClassificationFold:
     def _load_classification(
         self,
         filein=file_classification, 
-        lst_features=None):
+        lst_features=None,
+        train_with_conversion_dict=None,
+        ):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
-        if lst_features:
-            self.lst_features=lst_features
+        if train_with_conversion_dict:
+            lst_key=[key for key in train_with_conversion_dict.keys()]
+            lst_key=list(set(lst_key)&set(self.df_info.columns))
+            df_key=self.df_info.loc[:,lst_key].T
+            df_key["upper"]=[train_with_conversion_dict.get(i, i) for i in lst_key]
+            df_key=df_key.groupby(by="upper",).max()
+            self.lst_features=df_key.index.tolist()
+            self.df_info=self.df_info.drop(lst_key, axis=1)
+            self.df_info=pd.concat([self.df_info, df_key.T],axis=1)
         else:
-            self.lst_features=lst_classification
+            if lst_features:
+                self.lst_features=lst_features
+            else:
+                self.lst_features=lst_classification
 
     def _delete_sample(
         self,
