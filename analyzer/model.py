@@ -14,8 +14,12 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
 
-class FindingClassifier():
+class FindingClassifier:
     def __init__(self, DEVICE="cpu"):
         self.featurize_model=None
         self.classification_models=list()
@@ -23,8 +27,8 @@ class FindingClassifier():
 
     def load_featurize_model(self, dir_model=""):
         """only resnet18 x barlowtwins model is allowed"""
-        encoder=torchvision.models.resnet18(weight=None)
-        model = barlowtwins.BarlowTwins(
+        encoder=torchvision.models.resnet18(weights=None)
+        model = BarlowTwins(
             nn.Sequential(*list(encoder.children())[:-1],),
             head_size=[515, 128, 512]
             )
@@ -42,8 +46,8 @@ class FindingClassifier():
     def classify(self, data_loader, num_pool=4):
         """predict all class probability"""
         x=self._featurize(data_loader, num_pool=num_pool) # sample x feature
-        lst_names, preds =self._predict_proba(x, style=self.style)
-        return lst_predict_proba
+        result =self._predict_proba(x, style=self.style)
+        return result
             
     def _featurize(self, data_loader, num_pool=4,):
         # featurize
@@ -79,13 +83,11 @@ class FindingClassifier():
 
     def _predict_proba(self, x, style="dict"):
         """predict all class probability"""
-        preds=[]
-        lst_names=[]
         if style=="dict":
+            result=dict()
             for name, model in self.classification_models.items():
-                preds.append(model.predict_proba(x)[:,1])
-                lst_names.append(name)
-        return lst_names, preds
+                result[name]=model.predict_proba(x)[:,1]
+        return result
 
 class ProjectionHead(nn.Module):
     """Base class for all projection and prediction heads.

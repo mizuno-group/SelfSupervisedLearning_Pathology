@@ -7,45 +7,49 @@
 
 import numpy as np
 import pandas as pd
-import torch
+from openslide import OpenSlide
 
-class ImageProcessor():
+class ImageProcessor:
     def __init__(self):
+        return
 
-    def load_image(self, filein):
-
-    def topatch(self, image, size=448,):
-        """img to patch"""
-
-    def make_patch(filein:str="", patch_size:int=256, num_patch:int=512, random_state:int=24771, inside=True,):
-        """extract patch from WSI"""
-        # set seed
-        random.seed(random_state)
-        # load
-        wsi = OpenSlide(filein)
-        # get patch mask
-        if inside:
-            mask=get_mask_inside(wsi, patch_size=patch_size, )
-        else:
-            mask = get_patch_mask(wsi, patch_size=patch_size)
-        mask_shape=mask.shape
-        # extract / append
-        lst_number=np.array(range(len(mask.flatten())))[mask.flatten()]
-        lst_number=random.sample(list(lst_number), num_patch)
+    def load_patch(self, filein="", mask=None, patch_size=448, model_patch_size=224,):
+        """load patch with mask"""
+        image = OpenSlide(filein)
         res = []
         ap = res.append
-        for number in lst_number:
-            v_h, v_w = divmod(number, mask_shape[1])
-            patch_image=wsi.read_region(
-                location=(int(v_w*patch_size), int(v_h*patch_size)),
-                level=0,
-                size=(patch_size, patch_size))
-            ap(np.array(patch_image, np.uint8)[:,:,:3])
+        for number in np.array(range(len(mask.flatten())))[mask.flatten()]:
+            v_h, v_w = divmod(number, mask.shape[1])
+            for i in range(int(patch_size/model_patch_size)):
+                for v in range(int(patch_size/model_patch_size)):
+                    patch_image=image.read_region(
+                        location=(
+                            int(v_w*patch_size + i*model_patch_size), 
+                            int(v_h*patch_size + v*model_patch_size)
+                        ),
+                        level=0,
+                        size=(model_patch_size, model_patch_size))
+                    ap(np.array(patch_image, np.uint8)[:,:,:3])
         res=np.stack(res).astype(np.uint8)
         return res, lst_number
 
+    def get_locations(self, filein="", mask=None, patch_size=448, model_patch_size=224,):
+        """return patch locations"""
+        res = []
+        ap = res.append
+        for number in np.array(range(len(mask.flatten())))[mask.flatten()]:
+            v_h, v_w = divmod(number, mask.shape[1])
+            for i in range(int(patch_size/model_patch_size)):
+                for v in range(int(patch_size/model_patch_size)):
+                    location=(
+                        int(v_w*patch_size + i*model_patch_size), 
+                        int(v_h*patch_size + v*model_patch_size)
+                    )
+                    ap(location)
+        return res
+
     def get_mask_inside(
-        image, 
+        filein="", 
         patch_size:int=448,
         slice_min_patch:int=100,
         adjacent_cells_slice=[(-1,0),(1,0),(0,-1),(0,1),],
@@ -59,6 +63,7 @@ class ImageProcessor():
         adjacent_cells_inside: definition of not outside condition
         """
         # load
+        image = OpenSlide(filein)
         level = image.get_best_level_for_downsample(patch_size)
         downsample = image.level_downsamples[level]
         ratio = patch_size / downsample

@@ -111,7 +111,7 @@ class ClassificationModel:
                 dict(zip(self.lst_features, self.lst_models)),
                 f"{outdir}/{savename}.pickle",
                 )
-            print(f"{outdir}/{savename}.pickle")
+            print(f"saved: {outdir}/{savename}.pickle")
 
     def _predict_multilabel(self, x_train, x_test, y_train, params, pred):
         """prediction with logistic regression for multi label task"""
