@@ -58,20 +58,36 @@ class Analyzer:
         #    patch_size=patch_size,
         #    model_patch_size=model_patch_size
         #)
-        self.locations=self.ImageProcessor.get_locations(
-            filein=filein, 
-            mask=self.mask, 
-            patch_size=patch_size,
-            model_patch_size=model_patch_size
-        )
-        data_loader=self.prepare_dataset_location(
-            filein=filein,
-            locations=self.locations, 
-            batch_size=batch_size,
-            patch_size=model_patch_size
-            )
-        self.result =self.classify(
-            data_loader, num_pool=int(size/model_patch_size)
+        self.locations=[
+            self.ImageProcessor.get_locations(
+                filein=filein, 
+                mask=self.mask, 
+                patch_size=patch_size,
+                model_patch_size=model_patch_size
+            ),# small size
+            self.ImageProcessor.get_locations(
+                filein=filein, 
+                mask=self.mask, 
+                patch_size=patch_size,
+                model_patch_size=patch_size
+            ),# large size
+        ]
+        data_loaders=[
+            self.prepare_dataset_location(
+                filein=filein,
+                locations=self.locations[0], 
+                batch_size=batch_size,
+                patch_size=model_patch_size
+            ),
+            self.prepare_dataset_location(
+                filein=filein,
+                locations=self.locations[1], 
+                batch_size=batch_size,
+                patch_size=patch_size
+            ),            
+        ]
+        self.result =self.FindingClassifier.classify(
+            data_loaders, num_pool=int(patch_size/model_patch_size)**2
         )
 
 # DataLoader
@@ -109,7 +125,7 @@ def prepare_dataset_data(data=None, batch_size:int=128):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
     data_transform = transforms.Compose([
-        transforms.CenterCrop((224,224)),
+        transforms.Resize((224,224), antialias=True),
         transforms.ToTensor(),
         normalize
     ])
@@ -156,10 +172,10 @@ class PatchDatasetLocation(torch.utils.data.Dataset):
         return self.datanum
 
     def __getitem__(self,idx):
-        out_data=wsi.read_region(
+        out_data=self.wsi.read_region(
             location=self.locations[idx],
             level=0,
-            size=(patch_size, patch_size)
+            size=(self.patch_size, self.patch_size)
         )
         out_data = Image.fromarray(
             np.array(out_data, np.uint8)[:,:,:3]

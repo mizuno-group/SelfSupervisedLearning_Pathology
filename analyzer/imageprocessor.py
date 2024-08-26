@@ -7,7 +7,9 @@
 
 import numpy as np
 import pandas as pd
+
 from openslide import OpenSlide
+import cv2
 
 class ImageProcessor:
     def __init__(self):
@@ -49,6 +51,7 @@ class ImageProcessor:
         return res
 
     def get_mask_inside(
+        self,
         filein="", 
         patch_size:int=448,
         slice_min_patch:int=100,

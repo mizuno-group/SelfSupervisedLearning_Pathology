@@ -9,6 +9,8 @@ https://docs.lightly.ai/self-supervised-learning/examples/barlowtwins.html
 
 @author: Katsuhisa MORITA
 """
+import numpy as np
+import pandas as pd
 
 from typing import List, Optional, Tuple, Union
 
@@ -30,7 +32,7 @@ class FindingClassifier:
         encoder=torchvision.models.resnet18(weights=None)
         model = BarlowTwins(
             nn.Sequential(*list(encoder.children())[:-1],),
-            head_size=[515, 128, 512]
+            head_size=[512, 512, 128]
             )
         model.load_state_dict(torch.load(dir_model))
         model = model.backbone
@@ -43,27 +45,45 @@ class FindingClassifier:
             print("not dict style is not implemented")
         self.style=style
 
-    def classify(self, data_loader, num_pool=4):
+    def classify(self, data_loaders, num_pool=4):
         """predict all class probability"""
-        x=self._featurize(data_loader, num_pool=num_pool) # sample x feature
-        result =self._predict_proba(x, style=self.style)
-        return result
+        x=self._featurize(data_loaders, num_pool=num_pool) # sample x feature
+        result_patch =self._predict_proba(x, style=self.style)
+        result_all=self._predict_proba(np.max(x, axis=0).rehspae(1,1536), style=self.style)
+        return result_patch, result_all
             
-    def _featurize(self, data_loader, num_pool=4,):
+    def _featurize(self, data_loaders, num_pool=4,):
+        """small size, large size and layer 4, 5"""
         # featurize
         self.featurize_model=self.featurize_model.to(self.DEVICE)
-        lst_out=[]
+        lst_out=[[]*4]
         with torch.inference_mode():
-            for data in data_loader:
+            x4_small=[]
+            x5_small=[]
+            for data in data_loaders[0]:
                 data = data.to(self.DEVICE)
-                out = self._extraction_layer45(self.featurize_model, data)
-                lst_out.append(out)
-        # max pooling
-        outs=np.max(
-            np.concatenate(out).reshape(-1, num_pool_patch, 512+256)
-            ,axis=1
-        ) # layer 4 + 5 size
-        return outs
+                x4, x5 = self._extraction_layer45(self.featurize_model, data)
+                x4_small.append(x4)
+                x5_small.append(x5)
+            x4_small=np.max(
+                np.concatenate(x4_small).reshape(-1, num_pool, 256),
+                axis=1
+            )
+            x5_small=np.max(
+                np.concatenate(x5_small).reshape(-1, num_pool, 256),
+                axis=1
+            )
+            for data in data_loaders[1]:
+                x4_large=[]
+                x5_large=[]
+                for data in data_loaders[0]:
+                    data = data.to(self.DEVICE)
+                    x4, x5 = self._extraction_layer45(self.featurize_model, data)
+                    x4_large.append(x4)
+                    x5_large.append(x5)
+            x4_large=np.concatenate(x4_large).reshape(-1, 256)
+            x5_large=np.concatenate(x5_large).reshape(-1, 256)
+        return np.concatenate([x5_small,x5_large, x4_small, x4_large], axis=1)
 
     def _extraction_layer45(self, model, x):
         x = model[0](x)# conv1
@@ -79,7 +99,7 @@ class FindingClassifier:
         x4 = torch.flatten(model[8](x), 1).detach().cpu().numpy().reshape(-1,256)
         x = model[7](x)# layer4
         x5 = torch.flatten(model[8](x), 1).detach().cpu().numpy().reshape(-1,512)
-        return torch.concat([x4, x5], dim=1)
+        return x4, x5
 
     def _predict_proba(self, x, style="dict"):
         """predict all class probability"""
