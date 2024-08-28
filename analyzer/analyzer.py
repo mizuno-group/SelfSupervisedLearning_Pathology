@@ -34,9 +34,11 @@ class Analyzer:
         self.FindingClassifier=FindingClassifier(DEVICE=DEVICE)
         self.ImageProcessor=ImageProcessor()
         # data
-        self.image=None
         self.mask=None
-        self.result=None
+        self.locations=None
+        # result
+        self.result_patch=None
+        self.result_all=None
 
     def load_model(self, dir_featurize_model="model.pt", dir_classification_models="folder or ", style="dict"):
         self.FindingClassifier.load_featurize_model(
@@ -46,7 +48,14 @@ class Analyzer:
             dir_models=dir_classification_models, style=style
         )
 
-    def analyze(self, filein, batch_size=128, patch_size=448, slice_min_patch=100, model_patch_size=224):
+    def analyze(
+        self, 
+        filein, 
+        batch_size=256, 
+        patch_size=448, 
+        model_patch_size=224,
+        slice_min_patch=100, 
+        ):
         self.mask = self.ImageProcessor.get_mask_inside(
             filein=filein, 
             patch_size=patch_size, 
@@ -73,20 +82,20 @@ class Analyzer:
             ),# large size
         ]
         data_loaders=[
-            self.prepare_dataset_location(
+            prepare_dataset_location(
                 filein=filein,
                 locations=self.locations[0], 
                 batch_size=batch_size,
                 patch_size=model_patch_size
             ),
-            self.prepare_dataset_location(
+            prepare_dataset_location(
                 filein=filein,
                 locations=self.locations[1], 
                 batch_size=batch_size,
                 patch_size=patch_size
             ),            
         ]
-        self.result =self.FindingClassifier.classify(
+        self.result_patch, self.result_all =self.FindingClassifier.classify(
             data_loaders, num_pool=int(patch_size/model_patch_size)**2
         )
 
@@ -193,7 +202,7 @@ def prepare_dataset_location(filein="", locations=None, batch_size:int=128, patc
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
     data_transform = transforms.Compose([
-        transforms.CenterCrop((224,224)),
+        transforms.Resize((224,224), antialias=True),
         transforms.ToTensor(),
         normalize
     ])

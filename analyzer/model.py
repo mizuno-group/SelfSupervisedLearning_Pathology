@@ -9,6 +9,7 @@ https://docs.lightly.ai/self-supervised-learning/examples/barlowtwins.html
 
 @author: Katsuhisa MORITA
 """
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
@@ -47,9 +48,11 @@ class FindingClassifier:
 
     def classify(self, data_loaders, num_pool=4):
         """predict all class probability"""
+        print("Featurizing WSI")
         x=self._featurize(data_loaders, num_pool=num_pool) # sample x feature
+        print("Finding Classsifying")
         result_patch =self._predict_proba(x, style=self.style)
-        result_all=self._predict_proba(np.max(x, axis=0).rehspae(1,1536), style=self.style)
+        result_all=self._predict_proba(np.max(x, axis=0).reshape(1,1536), style=self.style)
         return result_patch, result_all
             
     def _featurize(self, data_loaders, num_pool=4,):
@@ -70,19 +73,18 @@ class FindingClassifier:
                 axis=1
             )
             x5_small=np.max(
-                np.concatenate(x5_small).reshape(-1, num_pool, 256),
+                np.concatenate(x5_small).reshape(-1, num_pool, 512),
                 axis=1
             )
+            x4_large=[]
+            x5_large=[]
             for data in data_loaders[1]:
-                x4_large=[]
-                x5_large=[]
-                for data in data_loaders[0]:
-                    data = data.to(self.DEVICE)
-                    x4, x5 = self._extraction_layer45(self.featurize_model, data)
-                    x4_large.append(x4)
-                    x5_large.append(x5)
+                data = data.to(self.DEVICE)
+                x4, x5 = self._extraction_layer45(self.featurize_model, data)
+                x4_large.append(x4)
+                x5_large.append(x5)
             x4_large=np.concatenate(x4_large).reshape(-1, 256)
-            x5_large=np.concatenate(x5_large).reshape(-1, 256)
+            x5_large=np.concatenate(x5_large).reshape(-1, 512)
         return np.concatenate([x5_small,x5_large, x4_small, x4_large], axis=1)
 
     def _extraction_layer45(self, model, x):
@@ -105,7 +107,7 @@ class FindingClassifier:
         """predict all class probability"""
         if style=="dict":
             result=dict()
-            for name, model in self.classification_models.items():
+            for name, model in tqdm(self.classification_models.items()):
                 result[name]=model.predict_proba(x)[:,1]
         return result
 

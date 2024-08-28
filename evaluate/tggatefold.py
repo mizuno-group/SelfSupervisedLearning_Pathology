@@ -186,7 +186,9 @@ class ClassificationFold:
 
     def _pred_pu_lr_bagging(self, x_train, x_test, y_train, params):
         model = LogisticRegression(**params)
-        pu_model = BaggingPuClassifier(estimator=model, n_estimators=15)
+        pu_model = BaggingPuClassifier(
+            estimator=model, n_estimators=15, n_jobs=-1, random_state=0
+            )
         pu_model.fit(x_train, y_train)
         y_pred = pu_model.predict_proba(x_test)[:,1]  
         return y_pred
