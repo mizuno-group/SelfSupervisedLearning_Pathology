@@ -4,29 +4,19 @@
 
 @author: Katsuhisa MORITA
 """
-import time
-import os
-import re
-import sys
-import datetime
-import random
-from typing import List, Tuple, Union, Sequence
-
 import numpy as np
 import pandas as pd
 from openslide import OpenSlide
-from PIL import ImageOps, Image
+from PIL import Image
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
-from .imageprocessor import ImageProcessor
-from .model import FindingClassifier
-
+from imageprocessor import ImageProcessor
+from model import FindingClassifier
 
 class Analyzer:
     def __init__(self, DEVICE="cpu"):

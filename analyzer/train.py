@@ -21,13 +21,7 @@ plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams["font.size"] = 14
 
 lst_classification=settings.lst_findings
-lst_prognosis=settings.lst_findings
-lst_compounds=settings.lst_compounds
-lst_moa=settings.lst_moa
-file_all=settings.file_all
 file_classification=settings.file_classification
-file_prognosis=settings.file_prognosis
-file_moa=settings.file_moa
 
 def load_conversion_dict(dir_data="", category="Category1"):
     # load conversion dict
