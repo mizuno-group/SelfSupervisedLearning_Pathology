@@ -182,7 +182,7 @@ class Visualizer():
                 print(f"No high probability crops: {key}")
             else:
                 plt.imshow(self.image_scaled)
-                for locate in df_proba[0.8>df_proba[key]>0.5]["locate"].tolist():
+                for locate in df_proba[(0.8>df_proba[key])&(df_proba[key]>0.5)]["locate"].tolist():
                     self._plot_cropline(locate, color="yellow", linewidth=0.8, scale_factor=self.scale_factor)
 
                 for locate in df_proba[df_proba[key]>0.8]["locate"].tolist():
@@ -199,7 +199,7 @@ class Visualizer():
         df_proba=pd.DataFrame(self.result_patch)
         df_proba["locate"]=self.locations
         if only_highscore:
-            for key in rself.esult_patch.keys():
+            for key in self.result_patch.keys():
                 if self.result_all[key]>0.5:
                     df_proba=df_proba.sort_values(by=key, ascending=False)
                     fig=plt.figure(figsize=(10,10))
