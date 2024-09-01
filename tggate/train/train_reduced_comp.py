@@ -5,7 +5,7 @@
 @author: Katsuhisa MORITA
 """
 # path setting
-PROJECT_PATH = '/work/gd43/a97001'
+PROJECT_PATH = '/workspace/pathology'
 
 # packages installed in the current environment
 import sys
@@ -71,7 +71,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
     def __init__(self,
                 batch_number:int=None,
                 transform=None,
-                num_wsi="",
+                num_comp="",
                 fold:int=None,
                 ):
         # set transform
@@ -80,7 +80,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
         else:
             self._transform = transform
         # load data
-        with open(f"/work/gd43/share/tggates/liver/batch_small/{num_wsi}/fold{fold}_batch{batch_number}.npy", 'rb') as f:
+        with open(f"/workspace/HDD3/TGGATEs/batch_comp/fold{fold}_n{num_wsi}_{batch_number}.npy", 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
         gc.collect()
@@ -96,7 +96,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
                 out_data = t(out_data)
         return out_data
 
-def prepare_data(batch_number:int=0, wsi_number:int=0, batch_size:int=32, fold:int=0):
+def prepare_data(batch_number:int=0, num_comp:int=0, batch_size:int=32, fold:int=0):
     """
     data preparation
     
@@ -108,7 +108,7 @@ def prepare_data(batch_number:int=0, wsi_number:int=0, batch_size:int=32, fold:i
     # data
     train_dataset = Dataset_Batch(
         batch_number=batch_number,
-        num_wsi=num_wsi,
+        num_comp=num_comp,
         transform=train_transform,
         fold=fold,
         )
@@ -129,20 +129,18 @@ def train_epoch(model, criterion, optimizer, epoch):
     train_batch_loss = []
     # define loader
     dict_batch={
-        64:1,
-        256:1,
-        1024:1,
-        4096:4,
+        5:1,
+        10:2,
+        15:3,
+        20:4,
     }
-    lst_fold=list(range(5))
-    lst_fold.remove(args.fold)
-    lst_minibatch=[[i,v] for i in lst_fold for v in range(dict_batch[args.number])]
+    lst_minibatch=list(range(dict_batch[args.number]))
     random.seed(args.seed+epoch)
     random.shuffle(minibatch_lst)
     random.seed(args.seed)
     for batch_number in minibatch_lst:
         # prep data
-        train_loader=prepare_data(batch_number=batch_number, wsi_number=args.number, batch_size=args.batch_size, fold=args.fold)
+        train_loader=prepare_data(batch_number=batch_number, num_comp=args.num_comp, batch_size=args.batch_size, fold=args.fold)
         # train
         for data in train_loader:
             loss = ssl_class.calc_loss(

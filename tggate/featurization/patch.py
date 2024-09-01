@@ -16,6 +16,7 @@ import time
 import numpy as np
 import pandas as pd
 import torch
+import torchvision.transforms as transforms
 
 # original packages in src
 sys.path.append(f"{PROJECT_PATH}/src/SelfSupervisedLearningPathology")

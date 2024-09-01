@@ -13,7 +13,7 @@ import seaborn as sns
 from sklearn.linear_model import LogisticRegression, ElasticNet
 from sklearn.svm import SVR
 import lightgbm as lgb
-
+from pulearn import BaggingPuClassifier, WeightedElkanotoPuClassifier
 from evaluate import utils
 import settings
 
@@ -28,6 +28,13 @@ file_all=settings.file_all
 file_classification=settings.file_classification
 file_prognosis=settings.file_prognosis
 file_moa=settings.file_moa
+
+def load_conversion_dict(dir_data="", category="Category1"):
+    # load conversion dict
+    df=pd.read_csv(f"{dir_data}/240313_finding_table.csv")
+    df=df.replace("-",np.nan).dropna(subset=["Open TG-GATEs",category])
+    dict_name=dict(zip(df["Open TG-GATEs"],df[category]))
+    return dict_name
 
 class ClassificationFold:
     def __init__(self):
@@ -49,14 +56,24 @@ class ClassificationFold:
         lst_features=None,
         finding_base=False,
         delete_sample=False, lst_delete_conc=["Control", "Low"], #delete control/low conc samples with findings
+        drop_injured_sample_train=False, 
+        drop_injured_sample_test=False, 
+        train_with_conversion_dict=None,
+        eval_with_conversion_dict=None,
+        file_classification=file_classification# for analysis
         ):
         # set
         dict_pred_method={
             "logistic_regression":self._pred_lr,
+            "pu_learn_bagging":self._pred_pu_lr_bagging,
+            "pu_learn_weightedelkanoto":self._pred_pu_lr_weightedelkanoto,
         }
         # load
         if finding:
-            self._load_classification(lst_features=lst_features)
+            self._load_classification(
+                filein=file_classification, 
+                lst_features=lst_features, 
+                train_with_conversion_dict=train_with_conversion_dict)
             if delete_sample:
                 self._delete_sample(lst_delete_conc=lst_delete_conc)
         if prognosis:
@@ -100,11 +117,21 @@ class ClassificationFold:
             if finding or prognosis:
                 if pred_method=="constant":
                     y_pred=arr_x_test
+                    res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features, eval_with_conversion_dict=eval_with_conversion_dict)
                 else:
-                    y_pred = self._predict_multilabel(
-                        arr_x_train, arr_x_test, y_train, 
-                        params, dict_pred_method[pred_method])
-                res = utils.calc_stats_multilabel(y_test, y_pred, self.lst_features)
+                    if drop_injured_sample_train or drop_injured_sample_test:
+                        y_pred, y_test = self._predict_multilabel_drop(
+                            arr_x_train, arr_x_test, y_train, y_test,
+                            params, dict_pred_method[pred_method], train=drop_injured_sample_train, test=drop_injured_sample_test)
+                    else:
+                        y_pred = self._predict_multilabel(
+                            arr_x_train, arr_x_test, y_train, 
+                            params, dict_pred_method[pred_method])
+                    res = utils.calc_stats_multilabel(
+                        y_test, y_pred, self.lst_features, 
+                        drop=drop_injured_sample_train or drop_injured_sample_test, 
+                        eval_with_conversion_dict=eval_with_conversion_dict)
+                    
             elif moa or compound_name:
                 y_pred = self._predict_multiclass(
                     arr_x_train, arr_x_test, y_train, 
@@ -123,6 +150,27 @@ class ClassificationFold:
         y_pred_all=np.stack(y_pred_all).T
         return y_pred_all
 
+    def _predict_multilabel_drop(self, x_train, x_test, y_train, y_test, params, pred, train=False, test=False):
+        """prediction with logistic regression for multi label task"""
+        y_pred_all=[]
+        y_test_all=[]
+        # for loop for one feature
+        for i in range(y_train.shape[1]):
+            if train:
+                ind_eval = (y_train[:,i]>0)|(y_train.sum(axis=1)==0)
+                x_train_temp, y_train_temp=x_train[ind_eval], y_train[ind_eval,i]
+            else:
+                x_train_temp, y_train_temp=x_train, y_train[:,i]
+            if test:
+                ind_eval = (y_test[:,i]>0)|(y_test.sum(axis=1)==0)
+                x_test_temp, y_test_temp=x_test[ind_eval], y_test[ind_eval,i]
+            else:
+                x_test_temp, y_test_temp=x_test, y_test[:,i]
+            y_pred = pred(x_train_temp, x_test_temp, y_train_temp, params)
+            y_pred_all.append(y_pred)
+            y_test_all.append(y_test_temp)
+        return y_pred_all, y_test_all
+
     def _predict_multiclass(self, x_train, x_test, y_train, params):
         """prediction with logistic regression for one label, multi class task"""
         lr = LogisticRegression(**params)
@@ -136,16 +184,47 @@ class ClassificationFold:
         y_pred = model.predict_proba(x_test)[:,1]
         return y_pred
 
+    def _pred_pu_lr_bagging(self, x_train, x_test, y_train, params):
+        model = LogisticRegression(**params)
+        pu_model = BaggingPuClassifier(
+            estimator=model, n_estimators=15, n_jobs=-1, random_state=0
+            )
+        pu_model.fit(x_train, y_train)
+        y_pred = pu_model.predict_proba(x_test)[:,1]  
+        return y_pred
+
+    def _pred_pu_lr_weightedelkanoto(self, x_train, x_test, y_train, params):
+        model = LogisticRegression(**params)
+        pu_model = WeightedElkanotoPuClassifier(
+            estimator=model, 
+            labeled=20, unlabeled=10, 
+            hold_out_ratio=0.2)
+        pu_model.fit(x_train, y_train)
+        y_pred = pu_model.predict_proba(x_test)[:,1]  
+        return y_pred
+
     def _load_classification(
         self,
         filein=file_classification, 
-        lst_features=None):
+        lst_features=None,
+        train_with_conversion_dict=None,
+        ):
         self.df_info=pd.read_csv(filein)
         self.df_info["INDEX"]=list(range(self.df_info.shape[0]))
-        if lst_features:
-            self.lst_features=lst_features
+        if train_with_conversion_dict:
+            lst_key=[key for key in train_with_conversion_dict.keys()]
+            lst_key=list(set(lst_key)&set(self.df_info.columns))
+            df_key=self.df_info.loc[:,lst_key].T
+            df_key["upper"]=[train_with_conversion_dict.get(i, i) for i in lst_key]
+            df_key=df_key.groupby(by="upper",).max()
+            self.lst_features=df_key.index.tolist()
+            self.df_info=self.df_info.drop(lst_key, axis=1)
+            self.df_info=pd.concat([self.df_info, df_key.T],axis=1)
         else:
-            self.lst_features=lst_classification
+            if lst_features:
+                self.lst_features=lst_features
+            else:
+                self.lst_features=lst_classification
 
     def _delete_sample(
         self,
@@ -153,6 +232,18 @@ class ClassificationFold:
         ):
         s_tf=self.df_info.loc[:,self.lst_features].sum(axis=1)>0 #with at least one finding
         self.df_info=self.df_info[~((self.df_info["DOSE_LEVEL"].isin(lst_delete_conc))&(s_tf))] # drop true and concentration is (control or low sample)
+
+    def _drop_injured_sample(
+        self,
+        arr_x_train, arr_x_test, y_train, y_test,
+        fold:int=0, only_train=False,
+        ):
+        df_info_train=self.df_info[self.df_info["FOLD"]!=fold]
+        df_info_train.index=df_info_train["INDEX"].tolist()
+        df_info_test=self.df_info[self.df_info["FOLD"]!=fold]
+        df_info_test.index=df_info_test["INDEX"].tolist()
+        if only_train:
+            df_temp=df_info_train[:,self.lst_features]
 
     def _load_prognosis(
         self,
@@ -308,7 +399,7 @@ class PredFold:
         return y_pred
 
     def _pred_lr(self, x_train, x_test, y_train, params):
-        model = LinearRegression(**params)
+        model = LogisticRegression(**params)
         model.fit(x_train, y_train)
         y_pred = model.predict(x_test).reshape(-1,1)
         return y_pred
