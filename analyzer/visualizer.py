@@ -223,6 +223,7 @@ class Visualizer():
                     plt.show()
         
     def print_probabilities(self,):
+        print("Findings Probabilities: ")
         for key, item in self.result_all.items():
             print(f"{key}: {item[0]:.3f}")
 
