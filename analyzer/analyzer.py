@@ -31,12 +31,18 @@ class Analyzer:
         self.result_all=None
 
     def load_model(self, dir_featurize_model="model.pt", dir_classification_models="folder or ", style="dict"):
-        self.FindingClassifier.load_featurize_model(
-            dir_model=dir_featurize_model
-        )
-        self.FindingClassifier.load_classification_models(
-            dir_models=dir_classification_models, style=style
-        )
+        try:
+            self.FindingClassifier.load_featurize_model(
+                dir_model=dir_featurize_model
+            )
+        except:
+            print(f"No featurize Model: {dir_featurize_model}")
+        try:
+            self.FindingClassifier.load_classification_models(
+                dir_models=dir_classification_models, style=style
+            )
+        except:
+            print(f"No Classification Model: {dir_classification_models}")
 
     def analyze(
         self, 

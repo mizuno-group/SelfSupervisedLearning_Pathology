@@ -290,7 +290,7 @@ def prepare_model_train(
         model_name:str='ResNet18', ssl_name="barlowtwins",
         patience:int=7, delta:float=0, 
         lr:float=0.003, num_epoch:int=150,
-        DEVICE="cpu"):
+        DEVICE="cpu", DIR_NAME=""):
     """
     preparation of models
     Parameters

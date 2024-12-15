@@ -24,7 +24,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import skimage
 
-sys.path.append("/workspace/tggate/src/SelfSupervisedLearningPathology")
+sys.path.append("/workspace/pathology/src/SelfSupervisedLearningPathology")
 import sslmodel
 import sslmodel.sslutils as sslutils
 import tggate.utils as utils
@@ -152,7 +152,7 @@ def main():
 
     # 1. load file locations and names
     if args.tggate_all: 
-        df_info=pd.read_csv(f"/workspace/tggate/data/tggate_info_ext.csv")
+        df_info=pd.read_csv(f"/workspace/pathology/data/tggate_info_ext.csv")
         lst_filein=df_info["DIR_temp"].tolist()
         lst_filename=[f"{args.result_name}{i}" for i in list(range(df_info.shape[0]))]
         lst_filemask=[f"/workspace/HDD3/TGGATEs/mask/{args.patch_size}/{i}_location.pickle" for i in list(range(df_info.shape[0]))]
