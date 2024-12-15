@@ -45,7 +45,7 @@ parser.add_argument('--note', type=str, help='barlowtwins running')
 parser.add_argument('--seed', type=int, default=0)
 # data settings
 parser.add_argument('--fold', type=int, default=0) # number of fold
-parser.add_argument('--num_wsi', type=int, default=100) # number of WSI
+parser.add_argument('--num_comp', type=int, default=100) # number of WSI
 parser.add_argument('--dir_result', type=str, help='result')
 # model/learning settings
 parser.add_argument('--model_name', type=str, default='ResNet18') # model architecture name
@@ -57,6 +57,7 @@ parser.add_argument('--patience', type=int, default=3) # early stopping
 parser.add_argument('--delta', type=float, default=0.002) # early stopping
 parser.add_argument('--resume_epoch', type=int, default=20) # max repeat epoch for one run
 parser.add_argument('--resume', action='store_true') # resuming or not
+parser.add_argument('--resize', action='store_true') # resuming or not
 # Transform (augmentation) settings
 parser.add_argument('--color_plob', type=float, default=0.8)
 parser.add_argument('--blur_plob', type=float, default=0.4)
@@ -80,7 +81,7 @@ class Dataset_Batch(torch.utils.data.Dataset):
         else:
             self._transform = transform
         # load data
-        with open(f"/workspace/HDD3/TGGATEs/batch_comp/fold{fold}_n{num_wsi}_{batch_number}.npy", 'rb') as f:
+        with open(f"/workspace/HDD3/TGGATEs/batch_comp/fold{fold}_n{num_comp}_{batch_number}.npy", 'rb') as f:
             self.data = np.load(f)
         self.datanum = len(self.data)
         gc.collect()
@@ -134,11 +135,11 @@ def train_epoch(model, criterion, optimizer, epoch):
         15:3,
         20:4,
     }
-    lst_minibatch=list(range(dict_batch[args.number]))
+    lst_minibatch=list(range(dict_batch[args.num_comp]))
     random.seed(args.seed+epoch)
-    random.shuffle(minibatch_lst)
+    random.shuffle(lst_minibatch)
     random.seed(args.seed)
-    for batch_number in minibatch_lst:
+    for batch_number in lst_minibatch:
         # prep data
         train_loader=prepare_data(batch_number=batch_number, num_comp=args.num_comp, batch_size=args.batch_size, fold=args.fold)
         # train
@@ -205,7 +206,7 @@ def main(resume=False):
         model, criterion, optimizer, scheduler, early_stopping = utils.prepare_model_train(
             model_name=args.model_name, ssl_name=args.ssl_name,
             patience=args.patience, delta=args.delta, lr=args.lr, num_epoch=args.num_epoch,
-            DEVICE=DEVICE,
+            DIR_NAME=DIR_NAME, DEVICE=DEVICE,
         )
         epoch_start=0
         train_loss=[]

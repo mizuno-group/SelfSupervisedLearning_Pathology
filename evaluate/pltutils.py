@@ -39,7 +39,8 @@ def plot_scatter_circle(
         _plot_scatter_circle(
             np.array(lst_v),
             move=1/(3*n_plot-1), position=(i+1)/(n_plot+1), n_plot=n_plot,
-            color=lst_color[i], linestyle=lst_style[i], ax=ax
+            color=lst_color[i], linestyle=lst_style[i], ax=ax,
+            average_line=True,
             )
 
 def plot_stripplot(

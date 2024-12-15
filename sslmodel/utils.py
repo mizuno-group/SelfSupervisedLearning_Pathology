@@ -373,7 +373,7 @@ class EarlyStopping:
         """
         self.patience = patience
         self.counter = 0
-        self.best_score = np.Inf
+        self.best_score = np.inf
         self.early_stop = False
         self.delta = delta
         self.path = path

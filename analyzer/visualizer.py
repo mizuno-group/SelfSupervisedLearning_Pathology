@@ -5,6 +5,7 @@
 @author: Katsuhisa MORITA
 """
 import gc
+import os
 import random
 import argparse
 
@@ -227,6 +228,11 @@ class Visualizer():
         for key, item in self.result_all.items():
             print(f"{key}: {item[0]:.3f}")
 
+    def export_probabilities(self, savedir=""):
+        with open(f"{savedir}/probs.txt", "w") as file:
+            for key, item in self.result_all.items():
+                file.write(f"{key}: {item[0]:.5f}\n")
+
     def _plot_cropline(
         self,
         locate, 
@@ -293,7 +299,15 @@ if __name__=="__main__":
         save_memory=True,
     )
     dat.load_image(scale_factor=args.scale_factor)
-    dat.print_probabilities()
+    # Export results
+    if not os.path.isdir(args.savedir):
+        os.makedirs(args.savedir)
+    # probabilities
+    try:
+        dat.print_probabilities()
+        dat.export_probabilities(save=args.savedir)
+    except:
+        pass
     # plot images
     if args.rawimage:
         dat.plot_rawimage(savedir=args.savedir, dpi=args.dpi)
